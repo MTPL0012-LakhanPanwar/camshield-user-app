@@ -1,7 +1,6 @@
 package com.jabil.securityapp
 
 import android.app.Application
-import androidx.lifecycle.ProcessLifecycleOwner
 
 class CameraSecurity: Application() {
     override fun onCreate() {

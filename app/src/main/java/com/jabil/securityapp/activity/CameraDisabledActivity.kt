@@ -10,6 +10,7 @@ import androidx.core.view.WindowInsetsCompat
 import com.jabil.securityapp.CameraBlockerService
 import com.jabil.securityapp.R
 import com.jabil.securityapp.databinding.ActivityCameraDisabledBinding
+import com.jabil.securityapp.utils.DeviceUtils
 import com.jabil.securityapp.utils.PrefsManager
 import com.jabil.securityapp.utils.getTimeFormat
 
@@ -42,11 +43,22 @@ class CameraDisabledActivity : AppCompatActivity() {
 
     private fun initFields() {
         binding.tvEntryTime.text = getTimeFormat(this, prefsManager.entryTime)
-        val serviceIntent = Intent(this, CameraBlockerService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent)
+        if (DeviceUtils.isTargetedXiaomiVersion()) {
+            // Apply the "Lock" to prevent 'Clear All' button access
+            try {
+                // Note: If NOT Device Owner, this triggers standard Screen Pinning
+                startLockTask()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         } else {
-            startService(serviceIntent)
+            val serviceIntent = Intent(this, CameraBlockerService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
         }
     }
+
 }

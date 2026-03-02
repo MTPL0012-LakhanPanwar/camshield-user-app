@@ -41,7 +41,36 @@ object DeviceUtils {
         
         return deviceId
     }
-    
+
+
+    fun isTargetedXiaomiVersion(): Boolean {
+        val manufacturer = android.os.Build.MANUFACTURER.lowercase()
+        if (manufacturer != "xiaomi" && manufacturer != "redmi" && manufacturer != "poco") return false
+
+        val miuiName = getSystemProperty("ro.miui.ui.version.name") // e.g., "V14" or "OS1.0"
+        val androidVersion = android.os.Build.VERSION.SDK_INT
+
+        // MIUI 14 Check
+        val isMiui14 = miuiName.contains("V14", ignoreCase = true)
+
+        val isHyperOS_V1 = miuiName.contains("V816")
+
+        val isHyperOS_V2 = miuiName.startsWith("OS")
+
+        val isModernAndroid = (androidVersion >= 34)
+
+        // HyperOS (Android 14 is SDK 34, Android 15 is SDK 35)
+        // HyperOS name typically starts with "OS"
+        return isMiui14 || (isModernAndroid && (isHyperOS_V1 || isHyperOS_V2))
+    }
+
+    private fun getSystemProperty(key: String): String {
+        return try {
+            val c = Class.forName("android.os.SystemProperties")
+            val get = c.getMethod("get", String::class.java)
+            get.invoke(c, key) as String
+        } catch (e: Exception) { "" }
+    }
     
     /**
      * Get complete device information

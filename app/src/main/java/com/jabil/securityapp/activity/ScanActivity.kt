@@ -215,6 +215,9 @@ class ScanActivity : AppCompatActivity() {
     }
 
     private fun unlockAndRemoveAdmin() {
+        if (DeviceUtils.isTargetedXiaomiVersion()){
+            stopLockTask()
+        }
         prefsManager.isLocked = false
         stopService(Intent(this, CameraBlockerService::class.java))
 
