@@ -218,6 +218,41 @@
             app:layout_constraintTop_toBottomOf="@id/tvAdminTitle" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/clVisitorId"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_card_dark"
+        android:padding="16dp"
+        app:layout_constraintTop_toBottomOf="@+id/adminWarningCard">
+
+        <TextView
+            android:id="@+id/tvVIdLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Visitor ID : "
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/tvVisitorID"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            tools:text="2934892487234"
+            android:textColor="#8A92A6"
+            android:textSize="14sp"
+            android:layout_marginStart="6dp"
+            app:layout_constraintBottom_toBottomOf="@id/tvVIdLabel"
+            app:layout_constraintStart_toEndOf="@id/tvVIdLabel"
+            app:layout_constraintTop_toTopOf="@id/tvVIdLabel" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnScanEntry"
         android:layout_width="match_parent"

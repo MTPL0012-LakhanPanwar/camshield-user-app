@@ -71,17 +71,9 @@ data class VisitorInfo(
 // ==================== Response Models ====================
 
 data class ApiResponse<T>(
-    @SerializedName("status")
-    val status: String,
-    
-    @SerializedName("message")
-    val message: String,
-    
-    @SerializedName("data")
-    val data: T? = null,
-    
-    @SerializedName("error")
-    val error: String? = null
+    @SerializedName("status") val status: String?,
+    @SerializedName("message") val message: String?,
+    @SerializedName("data") val data: T?
 )
 
 data class ValidateQRResponse(
@@ -102,16 +94,11 @@ data class ValidateQRResponse(
 )
 
 data class EnrollmentResponse(
-    @SerializedName("enrollmentId")
-    val enrollmentId: String? = null,
-    
-    @SerializedName("action")
-    val action: String? = null,
-    
-    @SerializedName("facilityName")
-    val facilityName: String? = null
+    val enrollmentId: String?,
+    val action: String?,
+    val facilityName: String?,
+    val visitorId: String? // Added since it's in your JSON
 )
-
 data class EnrollmentStatusResponse(
     @SerializedName("isEnrolled")
     val isEnrolled: Boolean,

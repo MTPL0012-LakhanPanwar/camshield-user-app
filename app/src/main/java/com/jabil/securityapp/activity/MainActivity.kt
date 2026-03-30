@@ -3,6 +3,7 @@ package com.jabil.securityapp.activity
 import android.Manifest
 import android.app.ActivityManager
 import android.app.AppOpsManager
+import android.app.Dialog
 import android.app.admin.DeviceAdminReceiver
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
@@ -17,10 +18,12 @@ import android.os.Process
 import android.provider.Settings
 import android.util.Log
 import android.view.View
+import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.material3.Button
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -192,12 +195,36 @@ class MainActivity : AppCompatActivity() {
         return true // All gates passed
     }
     // ==================== UI Initialization ====================
+    fun showCustomNoInternetDialog(context: Context) {
+        // 1. Create the Dialog object
+        val dialog = Dialog(context)
 
+        // 2. Set the custom layout
+        dialog.setContentView(R.layout.dialog_no_internet)
+
+        // 3. Make the background transparent so the rounded corners (if any) show up
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        // 4. Handle the button click
+        val btnOk = dialog.findViewById<Button>(R.id.btnOk)
+        btnOk.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        // 5. Prevent closing when clicking outside
+        dialog.setCancelable(false)
+
+        dialog.show()
+    }
     private fun setupClickListeners() {
         binding.btnScanEntry.setOnClickListener {
-            val intent = Intent(this, ScanActivity::class.java)
-            intent.putExtra("SCAN_ACTION", "ENTRY")
-            startActivity(intent)
+            if (!DeviceUtils.isInternetAvailable(this)){
+                showCustomNoInternetDialog(this)
+            }else{
+                val intent = Intent(this, ScanActivity::class.java)
+                intent.putExtra("SCAN_ACTION", "ENTRY")
+                startActivity(intent)
+            }
         }
         binding.btnScanExit.setOnClickListener {
             // Temporarily unlock camera to allow scanning
