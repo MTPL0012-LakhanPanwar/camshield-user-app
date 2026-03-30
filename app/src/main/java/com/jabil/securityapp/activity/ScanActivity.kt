@@ -19,11 +19,13 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import com.google.gson.Gson
 import com.google.zxing.ResultPoint
 import com.google.zxing.client.android.BeepManager
 import com.jabil.securityapp.CameraBlockerService
 import com.jabil.securityapp.R
 import com.jabil.securityapp.api.RetrofitClient
+import com.jabil.securityapp.api.models.ApiResponse
 import com.jabil.securityapp.api.models.DeviceInfo
 import com.jabil.securityapp.api.models.ScanEntryRequest
 import com.jabil.securityapp.api.models.ScanExitRequest
@@ -41,6 +43,7 @@ import java.io.IOException
 class ScanActivity : AppCompatActivity() {
     private lateinit var binding : ActivityScanBinding
     private var currentScanAction: ScanAction = ScanAction.NONE
+    private var visitorId: String = ""
     private enum class ScanAction { NONE, ENTRY, EXIT }
     private lateinit var deviceAdminManager: DeviceAdminManager
     private lateinit var prefsManager: PrefsManager
@@ -167,7 +170,7 @@ class ScanActivity : AppCompatActivity() {
     }
 
     private fun showErrorDialog(message: String) {
-        Toast.makeText(this, "Something went wrong!", Toast.LENGTH_LONG).show()
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 
     private fun isServiceRunning(): Boolean {
@@ -195,12 +198,36 @@ class ScanActivity : AppCompatActivity() {
         )
 
         val response = RetrofitClient.apiService.scanExit(request)
-
-        if (response.isSuccessful && response.body()?.status == "success") {
-            unlockAndRemoveAdmin()
+        if (response.isSuccessful) {
+            // This handles 200-299 OK
+            val successBody = response.body()
+            if (successBody?.status == "success") {
+                unlockAndRemoveAdmin()
+                visitorId = successBody.data?.visitorId?: ""
+            } else {
+                showErrorDialog(successBody?.message ?: "Exit failed.")
+                finish()
+            }
         } else {
-            showErrorDialog(response.body()?.message ?: "Exit failed. Please try again.")
+            // This handles 400, 401, 500, etc.
+            // 1. Get the raw JSON string from errorBody
+            val errorJsonString = response.errorBody()?.string()
+
+            // 2. Parse that JSON string into your ApiResponse class
+            val errorData = try {
+                Gson().fromJson(errorJsonString, ApiResponse::class.java)
+            } catch (e: Exception) {
+                null
+            }
+
+            // 3. Use the message from the parsed error
+            val displayMessage = errorData?.message ?: "Error: ${response.code()}"
+
+            Log.e(javaClass.name, "Actual Server Error Message: $displayMessage")
+            showErrorDialog(displayMessage)
+
             deviceAdminManager.lockCamera()
+            finish()
         }
     }
 
@@ -227,6 +254,7 @@ class ScanActivity : AppCompatActivity() {
         val intent = Intent(this, CameraDisabledActivity::class.java).apply {
             // These flags clear the entire task stack and make this the new root
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra("visitorId", visitorId)
         }
         startActivity(intent)
         finish()
@@ -249,12 +277,41 @@ class ScanActivity : AppCompatActivity() {
             deviceInfo = deviceInfo
         )
 
-        val response = RetrofitClient.apiService.scanEntry(request)
+        try {
+            val response = RetrofitClient.apiService.scanEntry(request)
 
-        if (response.isSuccessful && response.body()?.status == "success") {
-            requestDeviceAdmin()
-        } else {
-            showErrorDialog(response.body()?.message ?: "Entry failed. Please try again.")
+            if (response.isSuccessful) {
+                val apiBody = response.body()
+                if (apiBody?.status == "success") {
+                    // Success! Proceed to Admin request
+                    requestDeviceAdmin()
+                } else {
+                    // Server returned 200 but status was "failure" or similar
+                    showErrorDialog(apiBody?.message ?: "Entry denied.")
+                    finish()
+                }
+            } else {
+                // Handle 400, 401, 500 etc. (Server Error)
+                val errorJsonString = response.errorBody()?.string()
+
+                // Parse the error JSON manually since response.body() is null here
+                val errorData = try {
+                    Gson().fromJson(errorJsonString, ApiResponse::class.java)
+                } catch (e: Exception) {
+                    null
+                }
+
+                val displayMessage = errorData?.message ?: "Server Error: ${response.code()}"
+                Log.e(javaClass.name, "Entry Error: $displayMessage")
+
+                showErrorDialog(displayMessage)
+                finish()
+            }
+        } catch (e: Exception) {
+            // Handle network failures (No internet, Timeout)
+            Log.e(javaClass.name, "Network Exception: ${e.message}")
+            showErrorDialog("Network error. Please try again.")
+            finish()
         }
     }
 

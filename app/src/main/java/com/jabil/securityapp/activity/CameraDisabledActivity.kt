@@ -1,11 +1,13 @@
 package com.jabil.securityapp.activity
 
 import android.app.ActivityManager
+import android.app.Dialog
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.widget.Button
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -21,6 +23,7 @@ import com.jabil.securityapp.utils.getTimeFormat
 class CameraDisabledActivity : AppCompatActivity() {
     private lateinit var binding : ActivityCameraDisabledBinding
     private lateinit var prefsManager: PrefsManager
+    private var visitorId: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,6 +36,10 @@ class CameraDisabledActivity : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
+        intent.getStringExtra("visitorId")?.let {
+            visitorId = it
+        }
+        binding.tvVisitorID.text = visitorId
         initFields()
         initClickListeners()
     }
@@ -50,12 +57,37 @@ class CameraDisabledActivity : AppCompatActivity() {
             activityManager.isInLockTaskMode
         }
     }
+    fun showCustomNoInternetDialog(context: Context) {
+        // 1. Create the Dialog object
+        val dialog = Dialog(context)
 
+        // 2. Set the custom layout
+        dialog.setContentView(R.layout.dialog_no_internet)
+
+        // 3. Make the background transparent so the rounded corners (if any) show up
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        // 4. Handle the button click
+        val btnOk = dialog.findViewById<Button>(R.id.btnOk)
+        btnOk.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        // 5. Prevent closing when clicking outside
+        dialog.setCancelable(false)
+
+        dialog.show()
+    }
     private fun initClickListeners() {
         binding.btnScanEntry.setOnClickListener {
-            val intent = Intent(this, ScanActivity::class.java)
-            intent.putExtra("SCAN_ACTION", "EXIT")
-            startActivity(intent)
+            if (!DeviceUtils.isInternetAvailable(this)){
+                showCustomNoInternetDialog(this)
+            }else{
+                val intent = Intent(this, ScanActivity::class.java)
+                intent.putExtra("SCAN_ACTION", "EXIT")
+                startActivity(intent)
+            }
+
         }
 
         // This back press dispatcher is implemented for suppressed the toast message,
