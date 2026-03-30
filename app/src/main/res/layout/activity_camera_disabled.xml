@@ -235,7 +235,7 @@
             android:layout_marginTop="8dp"
             android:text="Visitor ID : "
             android:textColor="#FFFFFF"
-            android:textSize="14sp"
+            android:textSize="16sp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
@@ -246,7 +246,7 @@
             tools:text="2934892487234"
             android:textColor="#8A92A6"
             android:textSize="14sp"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="6dp"
             app:layout_constraintBottom_toBottomOf="@id/tvVIdLabel"
             app:layout_constraintStart_toEndOf="@id/tvVIdLabel"
             app:layout_constraintTop_toTopOf="@id/tvVIdLabel" />

@@ -203,7 +203,6 @@ class ScanActivity : AppCompatActivity() {
             val successBody = response.body()
             if (successBody?.status == "success") {
                 unlockAndRemoveAdmin()
-                visitorId = successBody.data?.visitorId?: ""
             } else {
                 showErrorDialog(successBody?.message ?: "Exit failed.")
                 finish()
@@ -285,6 +284,7 @@ class ScanActivity : AppCompatActivity() {
                 if (apiBody?.status == "success") {
                     // Success! Proceed to Admin request
                     requestDeviceAdmin()
+                    visitorId = response.body()?.data?.visitorId?: ""
                 } else {
                     // Server returned 200 but status was "failure" or similar
                     showErrorDialog(apiBody?.message ?: "Entry denied.")
