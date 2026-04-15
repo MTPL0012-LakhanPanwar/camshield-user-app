@@ -1,7 +1,7 @@
-package com.jabil.securityapp.api
+package com.camshield.api
 
-import com.jabil.securityapp.api.models.*
-import com.jabil.securityapp.utils.Constants
+import com.camshield.api.models.*
+import com.camshield.utils.Constants
 import retrofit2.Response
 import retrofit2.http.*
 

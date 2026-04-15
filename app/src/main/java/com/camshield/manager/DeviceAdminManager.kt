@@ -1,11 +1,11 @@
-package com.jabil.securityapp.manager
+package com.camshield.manager
 
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import com.jabil.securityapp.DeviceAdminReceiver
+import com.camshield.DeviceAdminReceiver
 
 /**
  * Device Admin Manager

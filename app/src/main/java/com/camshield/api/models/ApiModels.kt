@@ -1,4 +1,4 @@
-package com.jabil.securityapp.api.models
+package com.camshield.api.models
 
 import com.google.gson.annotations.SerializedName
 

@@ -1,12 +1,12 @@
-package com.jabil.securityapp.activity
+package com.camshield.activity
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
-import com.jabil.securityapp.CameraBlockerService
-import com.jabil.securityapp.utils.PrefsManager
+import com.camshield.CameraBlockerService
+import com.camshield.utils.PrefsManager
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {

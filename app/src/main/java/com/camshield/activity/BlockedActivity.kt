@@ -1,4 +1,4 @@
-package com.jabil.securityapp.activity
+package com.camshield.activity
 
 import android.app.ActivityManager
 import android.content.Intent
@@ -8,7 +8,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
-import com.jabil.securityapp.R
+import com.camshield.R
 
 class BlockedActivity : AppCompatActivity() {
 

@@ -1,12 +1,12 @@
-package com.jabil.securityapp.activity
+package com.camshield.activity
 
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.jabil.securityapp.R
-import com.jabil.securityapp.databinding.ActivityHelpBinding
+import com.camshield.R
+import com.camshield.databinding.ActivityHelpBinding
 
 class HelpActivity : AppCompatActivity() {
     private lateinit var binding : ActivityHelpBinding

@@ -1,4 +1,4 @@
-package com.jabil.securityapp.activity
+package com.camshield.activity
 
 import android.Manifest
 import android.app.ActivityManager
@@ -23,25 +23,24 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.material3.Button
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.zxing.integration.android.IntentIntegrator
-import com.jabil.securityapp.CameraBlockerService
-import com.jabil.securityapp.R
-import com.jabil.securityapp.api.RetrofitClient
-import com.jabil.securityapp.api.models.DeviceInfo
-import com.jabil.securityapp.api.models.ScanEntryRequest
-import com.jabil.securityapp.api.models.ScanExitRequest
-import com.jabil.securityapp.camera.AnyOrientationCaptureActivity
-import com.jabil.securityapp.databinding.ActivityMainBinding
-import com.jabil.securityapp.manager.DeviceAdminManager
-import com.jabil.securityapp.utils.Constants
-import com.jabil.securityapp.utils.DeviceUtils
-import com.jabil.securityapp.utils.PrefsManager
+import com.camshield.CameraBlockerService
+import com.camshield.R
+import com.camshield.api.RetrofitClient
+import com.camshield.api.models.DeviceInfo
+import com.camshield.api.models.ScanEntryRequest
+import com.camshield.api.models.ScanExitRequest
+import com.camshield.camera.AnyOrientationCaptureActivity
+import com.camshield.databinding.ActivityMainBinding
+import com.camshield.manager.DeviceAdminManager
+import com.camshield.utils.Constants
+import com.camshield.utils.DeviceUtils
+import com.camshield.utils.PrefsManager
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
@@ -135,7 +134,7 @@ class MainActivity : AppCompatActivity() {
     private fun showCameraRationaleDialog() {
         AlertDialog.Builder(this)
             .setTitle("Camera Access Required")
-            .setMessage("Jabil Security requires camera access to scan QR codes for Entry and Exit.")
+            .setMessage("Cam Shield requires camera access to scan QR codes for Entry and Exit.")
             .setPositiveButton("Try Again") { _, _ ->
                 isWaitingForPermission = true
                 requestPermissionLauncher.launch(Manifest.permission.CAMERA)

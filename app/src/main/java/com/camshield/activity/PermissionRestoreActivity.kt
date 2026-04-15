@@ -1,4 +1,4 @@
-package com.jabil.securityapp.activity
+package com.camshield.activity
 
 import android.content.Intent
 import android.os.Bundle
@@ -7,9 +7,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.jabil.securityapp.R
-import com.jabil.securityapp.databinding.ActivityPermissionRestoreBinding
-import com.jabil.securityapp.manager.DeviceAdminManager
+import com.camshield.R
+import com.camshield.databinding.ActivityPermissionRestoreBinding
+import com.camshield.manager.DeviceAdminManager
 
 class PermissionRestoreActivity : AppCompatActivity() {
     private lateinit var binding : ActivityPermissionRestoreBinding

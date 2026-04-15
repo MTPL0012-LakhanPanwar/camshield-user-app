@@ -1,8 +1,8 @@
-package com.jabil.securityapp
+package com.camshield
 
 import android.app.Application
 
-class CameraSecurity: Application() {
+class CamShield: Application() {
     override fun onCreate() {
         super.onCreate()
 //        ProcessLifecycleOwner.get().lifecycle.addObserver(AppLifecycleObserver(this))

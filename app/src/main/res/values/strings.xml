@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Security App</string>
+    <string name="app_name">CamShield</string>
     <string name="device_admin_label">Camera Lock Admin</string>
     <string name="device_admin_description">Required to lock/unlock camera based on location.</string>
     <string name="scan_entry">Scan Entry QR</string>

@@ -1,4 +1,4 @@
-package com.jabil.securityapp.activity
+package com.camshield.activity
 
 import android.Manifest
 import android.app.AppOpsManager
@@ -15,10 +15,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.jabil.securityapp.R
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import com.jabil.securityapp.databinding.ActivityPermissionBinding
+import com.camshield.R
+import com.camshield.databinding.ActivityPermissionBinding
 
 class PermissionActivity : AppCompatActivity() {
     private lateinit var binding: ActivityPermissionBinding

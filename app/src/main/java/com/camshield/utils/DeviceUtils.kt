@@ -1,4 +1,4 @@
-package com.jabil.securityapp.utils
+package com.camshield.utils
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -6,7 +6,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
 import android.provider.Settings
-import com.jabil.securityapp.api.models.DeviceInfo
+import com.camshield.api.models.DeviceInfo
 import java.util.*
 
 /**

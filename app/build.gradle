@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace 'com.jabil.securityapp'
+    namespace 'com.camshield'
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.jabil.securityapp"
+        applicationId "com.camshield"
         minSdk 24
         targetSdk 36
         versionCode 1

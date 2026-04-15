@@ -1,4 +1,4 @@
-package com.jabil.securityapp.activity
+package com.camshield.activity
 
 import android.app.ActivityManager
 import android.app.Dialog
@@ -13,12 +13,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.jabil.securityapp.CameraBlockerService
-import com.jabil.securityapp.R
-import com.jabil.securityapp.databinding.ActivityCameraDisabledBinding
-import com.jabil.securityapp.utils.DeviceUtils
-import com.jabil.securityapp.utils.PrefsManager
-import com.jabil.securityapp.utils.getTimeFormat
+import com.camshield.CameraBlockerService
+import com.camshield.R
+import com.camshield.databinding.ActivityCameraDisabledBinding
+import com.camshield.utils.DeviceUtils
+import com.camshield.utils.PrefsManager
+import com.camshield.utils.getTimeFormat
 
 class CameraDisabledActivity : AppCompatActivity() {
     private lateinit var binding : ActivityCameraDisabledBinding

@@ -1,4 +1,4 @@
-package com.jabil.securityapp.utils
+package com.camshield.utils
 
 import android.content.Context
 import android.content.SharedPreferences

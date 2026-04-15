@@ -1,4 +1,4 @@
-package com.jabil.securityapp.camera
+package com.camshield.camera
 
 import com.journeyapps.barcodescanner.CaptureActivity
 

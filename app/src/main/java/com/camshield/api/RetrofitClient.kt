@@ -1,6 +1,6 @@
-package com.jabil.securityapp.api
+package com.camshield.api
 
-import com.jabil.securityapp.utils.Constants
+import com.camshield.utils.Constants
 import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor

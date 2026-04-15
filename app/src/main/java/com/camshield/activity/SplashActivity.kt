@@ -1,4 +1,4 @@
-package com.jabil.securityapp.activity
+package com.camshield.activity
 
 import android.Manifest
 import android.app.AppOpsManager
@@ -16,9 +16,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.jabil.securityapp.R
-import com.jabil.securityapp.databinding.ActivitySplashBinding
-import com.jabil.securityapp.manager.DeviceAdminManager
+import com.camshield.R
+import com.camshield.databinding.ActivitySplashBinding
+import com.camshield.manager.DeviceAdminManager
 
 class SplashActivity : AppCompatActivity() {
     private lateinit var binding : ActivitySplashBinding

@@ -1,4 +1,4 @@
-package com.jabil.securityapp
+package com.camshield
 
 import android.app.admin.DeviceAdminReceiver
 import android.content.Context
@@ -82,4 +82,3 @@ class DeviceAdminReceiver : DeviceAdminReceiver() {
         Log.d(TAG, "Password Succeeded")
     }
 }
-

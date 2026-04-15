@@ -1,4 +1,4 @@
-package com.jabil.securityapp.utils
+package com.camshield.utils
 
 object Constants {
     
@@ -7,12 +7,8 @@ object Constants {
     // IMPORTANT: Change this to your backend server IP address
     // For emulator: use 10.0.2.2 (this points to localhost on your computer)
     // For physical device: use your computer's IP address (e.g., 192.168.1.100)
-    const val BASE_URL = "https://dyslogistically-shakier-nubia.ngrok-free.dev/api/" // Updated to match backend port 5000
-    
-    // Alternative for physical device (uncomment  and set your IP):
-    // const val BASE_URL = "https://c4a7b87907ca.ngrok-free.app/api/"
-    
-    
+    const val BASE_URL = "https://camshield-backend.mindefy.tech/" // Updated to match backend port 5000
+
     // ==================== API Endpoints ====================
     
     const val ENDPOINT_VALIDATE_QR = "enrollments/validate-qr"

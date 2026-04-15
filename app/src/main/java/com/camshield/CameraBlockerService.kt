@@ -1,9 +1,10 @@
-package com.jabil.securityapp
+package com.camshield
 
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
@@ -21,7 +22,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import androidx.core.app.NotificationCompat
-import com.jabil.securityapp.utils.PrefsManager
+import com.camshield.utils.PrefsManager
 
 class CameraBlockerService : Service() {
 
@@ -86,8 +87,8 @@ class CameraBlockerService : Service() {
     override fun onCreate() {
         super.onCreate()
         prefsManager = PrefsManager(this)
-        cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
-        windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        cameraManager = getSystemService(CAMERA_SERVICE) as CameraManager
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         // Register Camera Callback
         try {
@@ -148,17 +149,17 @@ class CameraBlockerService : Service() {
     }
 
     private fun checkForegroundApp() {
-        val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val usageStatsManager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
         val time = System.currentTimeMillis()
         var currentApp = ""
 
         // Strategy 1: Usage Events (Precise)
         val events = usageStatsManager.queryEvents(time - 1000, time) // 2 seconds window
-        val event = android.app.usage.UsageEvents.Event()
+        val event = UsageEvents.Event()
 
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
-            if (event.eventType == android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND) {
+            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
                 currentApp = event.packageName
             }
         }
@@ -219,7 +220,7 @@ class CameraBlockerService : Service() {
 
         try {
             if (overlayView == null) {
-                val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+                val inflater = getSystemService(LAYOUT_INFLATER_SERVICE) as LayoutInflater
                 overlayView = inflater.inflate(R.layout.activity_blocked, null)
 
                 // Set up dismiss button
@@ -289,16 +290,16 @@ class CameraBlockerService : Service() {
 
     // Improved isAppForeground using events first (more robust)
     private fun isAppForeground(targetPackage: String): Boolean {
-        val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val usageStatsManager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
         val time = System.currentTimeMillis()
 
         // 1. Check Events (Fast & Accurate)
         val events = usageStatsManager.queryEvents(time - 1000, time)
-        val event = android.app.usage.UsageEvents.Event()
+        val event = UsageEvents.Event()
         var lastForegroundApp = ""
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
-            if (event.eventType == android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND) {
+            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
                 lastForegroundApp = event.packageName
             }
         }
