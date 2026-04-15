@@ -1,4 +1,4 @@
-package com.camshield.activity
+package com.sierra.camblock.activity
 
 import android.content.Intent
 import android.os.Bundle
@@ -7,9 +7,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.camshield.R
-import com.camshield.databinding.ActivityPermissionRestoreBinding
-import com.camshield.manager.DeviceAdminManager
+import com.sierra.camblock.R
+import com.sierra.camblock.databinding.ActivityPermissionRestoreBinding
+import com.sierra.camblock.manager.DeviceAdminManager
 
 class PermissionRestoreActivity : AppCompatActivity() {
     private lateinit var binding : ActivityPermissionRestoreBinding

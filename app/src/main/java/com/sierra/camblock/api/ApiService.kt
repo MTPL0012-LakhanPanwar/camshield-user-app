@@ -1,7 +1,7 @@
-package com.camshield.api
+package com.sierra.camblock.api
 
-import com.camshield.api.models.*
-import com.camshield.utils.Constants
+import com.sierra.camblock.api.models.*
+import com.sierra.camblock.utils.Constants
 import retrofit2.Response
 import retrofit2.http.*
 

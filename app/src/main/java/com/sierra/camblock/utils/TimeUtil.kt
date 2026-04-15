@@ -1,4 +1,4 @@
-package com.camshield.utils
+package com.sierra.camblock.utils
 
 import android.content.Context
 import java.text.SimpleDateFormat

@@ -1,4 +1,4 @@
-package com.camshield.activity
+package com.sierra.camblock.activity
 
 import android.Manifest
 import android.app.ActivityManager
@@ -29,18 +29,18 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.zxing.integration.android.IntentIntegrator
-import com.camshield.CameraBlockerService
-import com.camshield.R
-import com.camshield.api.RetrofitClient
-import com.camshield.api.models.DeviceInfo
-import com.camshield.api.models.ScanEntryRequest
-import com.camshield.api.models.ScanExitRequest
-import com.camshield.camera.AnyOrientationCaptureActivity
-import com.camshield.databinding.ActivityMainBinding
-import com.camshield.manager.DeviceAdminManager
-import com.camshield.utils.Constants
-import com.camshield.utils.DeviceUtils
-import com.camshield.utils.PrefsManager
+import com.sierra.camblock.CameraBlockerService
+import com.sierra.camblock.R
+import com.sierra.camblock.api.RetrofitClient
+import com.sierra.camblock.api.models.DeviceInfo
+import com.sierra.camblock.api.models.ScanEntryRequest
+import com.sierra.camblock.api.models.ScanExitRequest
+import com.sierra.camblock.camera.AnyOrientationCaptureActivity
+import com.sierra.camblock.databinding.ActivityMainBinding
+import com.sierra.camblock.manager.DeviceAdminManager
+import com.sierra.camblock.utils.Constants
+import com.sierra.camblock.utils.DeviceUtils
+import com.sierra.camblock.utils.PrefsManager
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException

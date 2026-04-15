@@ -1,4 +1,4 @@
-package com.camshield
+package com.sierra.camblock
 
 import android.app.admin.DeviceAdminReceiver
 import android.content.Context

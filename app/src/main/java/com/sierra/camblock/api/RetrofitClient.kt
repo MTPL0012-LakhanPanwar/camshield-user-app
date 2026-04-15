@@ -1,6 +1,6 @@
-package com.camshield.api
+package com.sierra.camblock.api
 
-import com.camshield.utils.Constants
+import com.sierra.camblock.utils.Constants
 import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor

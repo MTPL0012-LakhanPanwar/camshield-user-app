@@ -1,4 +1,4 @@
-package com.camshield.api.models
+package com.sierra.camblock.api.models
 
 import com.google.gson.annotations.SerializedName
 

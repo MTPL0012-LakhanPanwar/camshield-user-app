@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace 'com.camshield'
+    namespace 'com.sierra.camblock'
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.camshield"
+        applicationId "com.sierra.camblock"
         minSdk 24
         targetSdk 36
         versionCode 1

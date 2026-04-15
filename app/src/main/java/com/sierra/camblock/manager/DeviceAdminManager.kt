@@ -1,11 +1,11 @@
-package com.camshield.manager
+package com.sierra.camblock.manager
 
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import com.camshield.DeviceAdminReceiver
+import com.sierra.camblock.DeviceAdminReceiver
 
 /**
  * Device Admin Manager

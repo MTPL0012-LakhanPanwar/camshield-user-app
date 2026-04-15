@@ -1,4 +1,4 @@
-package com.camshield.utils
+package com.sierra.camblock.utils
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -6,7 +6,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
 import android.provider.Settings
-import com.camshield.api.models.DeviceInfo
+import com.sierra.camblock.api.models.DeviceInfo
 import java.util.*
 
 /**

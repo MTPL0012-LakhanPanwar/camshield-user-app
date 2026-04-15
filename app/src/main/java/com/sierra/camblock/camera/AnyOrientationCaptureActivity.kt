@@ -1,4 +1,4 @@
-package com.camshield.camera
+package com.sierra.camblock.camera
 
 import com.journeyapps.barcodescanner.CaptureActivity
 

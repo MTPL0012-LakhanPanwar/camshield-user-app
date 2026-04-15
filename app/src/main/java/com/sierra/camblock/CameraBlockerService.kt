@@ -1,4 +1,4 @@
-package com.camshield
+package com.sierra.camblock
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -22,7 +22,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import androidx.core.app.NotificationCompat
-import com.camshield.utils.PrefsManager
+import com.sierra.camblock.utils.PrefsManager
 
 class CameraBlockerService : Service() {
 

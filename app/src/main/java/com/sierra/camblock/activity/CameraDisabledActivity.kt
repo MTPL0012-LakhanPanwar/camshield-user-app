@@ -1,4 +1,4 @@
-package com.camshield.activity
+package com.sierra.camblock.activity
 
 import android.app.ActivityManager
 import android.app.Dialog
@@ -13,12 +13,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.camshield.CameraBlockerService
-import com.camshield.R
-import com.camshield.databinding.ActivityCameraDisabledBinding
-import com.camshield.utils.DeviceUtils
-import com.camshield.utils.PrefsManager
-import com.camshield.utils.getTimeFormat
+import com.sierra.camblock.CameraBlockerService
+import com.sierra.camblock.R
+import com.sierra.camblock.databinding.ActivityCameraDisabledBinding
+import com.sierra.camblock.utils.DeviceUtils
+import com.sierra.camblock.utils.PrefsManager
+import com.sierra.camblock.utils.getTimeFormat
 
 class CameraDisabledActivity : AppCompatActivity() {
     private lateinit var binding : ActivityCameraDisabledBinding

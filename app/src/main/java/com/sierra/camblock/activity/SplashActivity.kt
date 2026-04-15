@@ -1,4 +1,4 @@
-package com.camshield.activity
+package com.sierra.camblock.activity
 
 import android.Manifest
 import android.app.AppOpsManager
@@ -16,9 +16,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.camshield.R
-import com.camshield.databinding.ActivitySplashBinding
-import com.camshield.manager.DeviceAdminManager
+import com.sierra.camblock.R
+import com.sierra.camblock.databinding.ActivitySplashBinding
+import com.sierra.camblock.manager.DeviceAdminManager
 
 class SplashActivity : AppCompatActivity() {
     private lateinit var binding : ActivitySplashBinding

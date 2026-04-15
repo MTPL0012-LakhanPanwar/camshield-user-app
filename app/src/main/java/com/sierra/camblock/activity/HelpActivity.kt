@@ -1,12 +1,12 @@
-package com.camshield.activity
+package com.sierra.camblock.activity
 
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.camshield.R
-import com.camshield.databinding.ActivityHelpBinding
+import com.sierra.camblock.R
+import com.sierra.camblock.databinding.ActivityHelpBinding
 
 class HelpActivity : AppCompatActivity() {
     private lateinit var binding : ActivityHelpBinding

@@ -1,4 +1,4 @@
-package com.camshield.activity
+package com.sierra.camblock.activity
 
 import android.Manifest
 import android.app.AppOpsManager
@@ -17,8 +17,8 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import com.camshield.R
-import com.camshield.databinding.ActivityPermissionBinding
+import com.sierra.camblock.R
+import com.sierra.camblock.databinding.ActivityPermissionBinding
 
 class PermissionActivity : AppCompatActivity() {
     private lateinit var binding: ActivityPermissionBinding

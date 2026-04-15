@@ -1,4 +1,4 @@
-package com.camshield.activity
+package com.sierra.camblock.activity
 
 import android.app.ActivityManager
 import android.content.Intent
@@ -8,7 +8,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
-import com.camshield.R
+import com.sierra.camblock.R
 
 class BlockedActivity : AppCompatActivity() {
 

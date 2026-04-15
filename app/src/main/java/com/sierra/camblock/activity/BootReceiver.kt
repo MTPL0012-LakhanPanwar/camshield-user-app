@@ -1,12 +1,12 @@
-package com.camshield.activity
+package com.sierra.camblock.activity
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
-import com.camshield.CameraBlockerService
-import com.camshield.utils.PrefsManager
+import com.sierra.camblock.CameraBlockerService
+import com.sierra.camblock.utils.PrefsManager
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
