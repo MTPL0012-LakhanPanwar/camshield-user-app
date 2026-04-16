@@ -37,7 +37,6 @@
             android:textColor="#FFFFFF"
             android:textSize="34sp"
             android:textStyle="bold"
-            app:layout_constraintEnd_toStartOf="@+id/tvTitleRight"
             app:layout_constraintHorizontal_chainStyle="packed"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/imageView" />
@@ -51,7 +50,6 @@
             android:text="ENCRYPTED ACCESS"
             android:textColor="#8A92A6"
             android:textSize="14sp"
-            app:layout_constraintEnd_toEndOf="@+id/tvTitleRight"
             app:layout_constraintStart_toStartOf="@+id/tvTitleLeft"
             app:layout_constraintTop_toBottomOf="@id/tvTitleLeft" />
     </androidx.constraintlayout.widget.ConstraintLayout>
