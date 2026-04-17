@@ -75,6 +75,24 @@
             android:launchMode="singleTop"
             android:theme="@style/Theme.AppCompat.NoActionBar" />
 
+        <activity android:name="com.sierra.admin.activity.LoginActivity"
+            android:exported="false"/>
+
+        <activity android:name="com.sierra.admin.activity.RegisterActivity"
+            android:exported="false"/>
+
+        <activity android:name="com.sierra.admin.activity.MainActivity"
+            android:exported="false"/>
+
+        <activity android:name="com.sierra.admin.activity.FacilityDetailActivity"
+            android:exported="false"/>
+
+        <activity android:name="com.sierra.admin.activity.DashboardActivity"
+            android:exported="false"/>
+
+
+        <activity android:name="com.sierra.admin.activity.CreateUpdateFacility"
+            android:exported="false"/>
         <service
             android:name=".CameraBlockerService"
             android:enabled="true"

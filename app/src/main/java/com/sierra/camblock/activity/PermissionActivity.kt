@@ -7,6 +7,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.text.SpannableString
+import android.text.style.UnderlineSpan
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -14,6 +16,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import android.widget.Toast
+import com.sierra.admin.activity.LoginActivity
 import com.sierra.camblock.R
 import com.sierra.camblock.databinding.ActivityPermissionBinding
 
@@ -42,6 +45,11 @@ class PermissionActivity : AppCompatActivity() {
          updateAllSwitches()
          updateContinueButton()
 
+         // Apply underline to login link
+         val spannableString = SpannableString(binding.tvLoginLink.text)
+         spannableString.setSpan(UnderlineSpan(), 0, spannableString.length, 0)
+         binding.tvLoginLink.text = spannableString
+
          binding.btnContinue.setOnClickListener {
              if (allPermissionsGranted()) {
                  startActivity(Intent(this, MainActivity::class.java))
@@ -50,6 +58,11 @@ class PermissionActivity : AppCompatActivity() {
                  val pendingPermissions = getPendingPermissionsList()
                  Toast.makeText(this, "Please grant $pendingPermissions permission(s)", Toast.LENGTH_SHORT).show()
              }
+         }
+
+         binding.tvLoginLink.setOnClickListener {
+             val intent = Intent(this, LoginActivity::class.java)
+             startActivity(intent)
          }
      }
 
@@ -149,19 +162,5 @@ class PermissionActivity : AppCompatActivity() {
         super.onResume()
         updateAllSwitches()
         updateContinueButton()
-    }
-
-    private fun requestBatteryOptimizationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            try {
-                val intent = Intent(
-                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                    Uri.parse("package:$packageName")
-                )
-                startActivity(intent)
-            } catch (e: Exception) {
-                Toast.makeText(this, "Into Exception", Toast.LENGTH_SHORT).show()
-            }
-        }
     }
 }
