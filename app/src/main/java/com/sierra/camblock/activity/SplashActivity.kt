@@ -1,19 +1,15 @@
 package com.sierra.camblock.activity
 
-import android.Manifest
 import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.sierra.camblock.R
@@ -59,16 +55,7 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun allPermissionsGranted(): Boolean {
-        return hasCameraPermission() &&
-                hasUsageStatsPermission() &&
-                hasOverlayPermission() &&
-                isIgnoringBatteryOptimizations()
-    }
-
-    private fun hasCameraPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            this, Manifest.permission.CAMERA
-        ) == PackageManager.PERMISSION_GRANTED
+        return hasUsageStatsPermission() && hasOverlayPermission()
     }
 
     private fun hasUsageStatsPermission(): Boolean {
@@ -92,10 +79,5 @@ class SplashActivity : AppCompatActivity() {
 
     private fun hasOverlayPermission(): Boolean {
         return Settings.canDrawOverlays(this)
-    }
-
-    private fun isIgnoringBatteryOptimizations(): Boolean {
-        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        return powerManager.isIgnoringBatteryOptimizations(packageName)
     }
 }
