@@ -27,14 +27,12 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import com.google.zxing.integration.android.IntentIntegrator
 import com.sierra.camblock.CameraBlockerService
 import com.sierra.camblock.R
 import com.sierra.camblock.api.RetrofitClient
 import com.sierra.camblock.api.models.DeviceInfo
 import com.sierra.camblock.api.models.ScanEntryRequest
 import com.sierra.camblock.api.models.ScanExitRequest
-import com.sierra.camblock.camera.AnyOrientationCaptureActivity
 import com.sierra.camblock.databinding.ActivityMainBinding
 import com.sierra.camblock.manager.DeviceAdminManager
 import com.sierra.camblock.utils.Constants
@@ -43,7 +41,6 @@ import com.sierra.camblock.utils.PrefsManager
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
-import kotlin.jvm.java
 
 class MainActivity : AppCompatActivity() {
 
@@ -84,6 +81,22 @@ class MainActivity : AppCompatActivity() {
             launchEntryScanActivity()
         }
         openEntryScanAfterSettings = false
+    }
+
+    private val scanOnlyResultLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val scannedValue = result.data?.getStringExtra(ScanActivity.EXTRA_SCANNED_QR)
+        if (result.resultCode == RESULT_OK && !scannedValue.isNullOrBlank()) {
+            handleScanResult(scannedValue)
+        } else {
+            Toast.makeText(this, "Scan Cancelled", Toast.LENGTH_SHORT).show()
+            if (currentScanAction == ScanAction.EXIT) {
+                deviceAdminManager.lockCamera()
+                updateUI()
+            }
+            currentScanAction = ScanAction.NONE
+        }
     }
 
 
@@ -444,37 +457,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
     private fun startQRScan() {
-        val integrator = IntentIntegrator(this)
-        integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE)
-        integrator.setPrompt("Scan ${if (currentScanAction == ScanAction.ENTRY) "Entry" else "Exit"} QR Code")
-        // Remove setCameraId(0) to allow default selection (fixes some device issues)
-        // integrator.setCameraId(0)
-        integrator.setBeepEnabled(true)
-        integrator.setBarcodeImageEnabled(false)
-        integrator.setOrientationLocked(false) // Fixes some orientation/init issues
-        integrator.setCaptureActivity(AnyOrientationCaptureActivity::class.java) // See step 3
-        integrator.initiateScan()
+        val intent = Intent(this, ScanActivity::class.java).apply {
+            putExtra(ScanActivity.EXTRA_SCAN_ONLY, true)
+        }
+        scanOnlyResultLauncher.launch(intent)
     }
 
     // Handle QR Scan Result
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        // Handle QR Result
-        val result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
-        if (result != null) {
-            if (result.contents != null) {
-                handleScanResult(result.contents)
-            } else {
-                Toast.makeText(this, "Scan Cancelled", Toast.LENGTH_SHORT).show()
-
-                // Re-lock if cancelled during Exit flow
-                if (currentScanAction == ScanAction.EXIT) {
-                    deviceAdminManager.lockCamera()
-                    updateUI()
-                }
-            }
-            return
-        }
-
         // Handle Device Admin Result
         if (requestCode == Constants.DEVICE_ADMIN_REQUEST_CODE) {
             if (resultCode == RESULT_OK || deviceAdminManager.isDeviceAdminActive()) {
