@@ -31,15 +31,17 @@ class CameraDisabledActivity : AppCompatActivity() {
     private lateinit var binding : ActivityCameraDisabledBinding
     private lateinit var prefsManager: PrefsManager
     private var visitorId: String = ""
-    private var hasPromptedBatteryOptimization: Boolean = false
+    private var batteryPermissionDialog: AlertDialog? = null
 
     private val batteryOptimizationLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
         if (isIgnoringBatteryOptimizations()) {
             Toast.makeText(this, "Battery optimization disabled for Cam Shield.", Toast.LENGTH_SHORT).show()
+            batteryPermissionDialog?.dismiss()
         } else {
             Toast.makeText(this, "Battery optimization permission is still pending.", Toast.LENGTH_SHORT).show()
+            ensureBatteryOptimizationPermission()
         }
     }
 
@@ -55,13 +57,21 @@ class CameraDisabledActivity : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-        intent.getStringExtra("visitorId")?.let {
-            visitorId = it
-        }
-        binding.tvVisitorID.text = visitorId
+        restoreVisitorId()
         initFields()
         initClickListeners()
         ensureBatteryOptimizationPermission()
+    }
+
+    private fun restoreVisitorId() {
+        val visitorIdFromIntent = intent.getStringExtra("visitorId").orEmpty()
+        visitorId = if (visitorIdFromIntent.isNotBlank()) {
+            prefsManager.activeVisitorId = visitorIdFromIntent
+            visitorIdFromIntent
+        } else {
+            prefsManager.activeVisitorId
+        }
+        binding.tvVisitorID.text = visitorId
     }
 
     private fun applySystemBarsAppearance() {
@@ -80,6 +90,12 @@ class CameraDisabledActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         ensureBatteryOptimizationPermission()
+    }
+
+    override fun onDestroy() {
+        batteryPermissionDialog?.dismiss()
+        batteryPermissionDialog = null
+        super.onDestroy()
     }
 
     fun isKioskModeActive(): Boolean {
@@ -163,18 +179,23 @@ class CameraDisabledActivity : AppCompatActivity() {
 
     private fun ensureBatteryOptimizationPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
-        if (isIgnoringBatteryOptimizations() || hasPromptedBatteryOptimization) return
+        if (isIgnoringBatteryOptimizations()) {
+            batteryPermissionDialog?.dismiss()
+            batteryPermissionDialog = null
+            return
+        }
+        if (batteryPermissionDialog?.isShowing == true) return
 
-        hasPromptedBatteryOptimization = true
-        AlertDialog.Builder(this)
+        batteryPermissionDialog = AlertDialog.Builder(this)
             .setTitle("Battery Optimization Permission")
             .setMessage("Allow Cam Shield to ignore battery optimization so background protection remains active during your session.")
             .setPositiveButton("Grant") { _, _ ->
                 requestBatteryOptimizationPermission()
             }
-            .setNegativeButton("Later", null)
             .setCancelable(false)
-            .show()
+            .create()
+
+        batteryPermissionDialog?.show()
     }
 
     private fun requestBatteryOptimizationPermission() {

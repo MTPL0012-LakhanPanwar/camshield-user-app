@@ -390,6 +390,7 @@ class ScanActivity : AppCompatActivity() {
             stopLockTask()
         }
         prefsManager.isLocked = false
+        prefsManager.activeVisitorId = ""
         stopService(Intent(this, CameraBlockerService::class.java))
 
         if (deviceAdminManager.unlockCamera()) {
@@ -405,10 +406,11 @@ class ScanActivity : AppCompatActivity() {
     }
 
     private fun startCamDisabledActivity() {
+        val effectiveVisitorId = if (visitorId.isNotBlank()) visitorId else prefsManager.activeVisitorId
         val intent = Intent(this, CameraDisabledActivity::class.java).apply {
             // These flags clear the entire task stack and make this the new root
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("visitorId", visitorId)
+            putExtra("visitorId", effectiveVisitorId)
         }
         startActivity(intent)
         finish()
@@ -441,8 +443,9 @@ class ScanActivity : AppCompatActivity() {
                 val apiBody = response.body()
                 if (apiBody?.status == "success") {
                     // Success! Proceed to Admin request
+                    visitorId = apiBody.data?.visitorId ?: ""
+                    prefsManager.activeVisitorId = visitorId
                     requestDeviceAdmin()
-                    visitorId = response.body()?.data?.visitorId?: ""
                 } else {
                     // Server returned 200 but status was "failure" or similar
                     showErrorDialog(apiBody?.message ?: "Entry denied.")

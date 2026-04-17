@@ -745,6 +745,7 @@ class MainActivity : AppCompatActivity() {
     private fun unlockAndRemoveAdmin() {
         // Clear lock state
         prefsManager.isLocked = false
+        prefsManager.activeVisitorId = ""
 
         // 1. Stop Software Lock (Service)
         stopService(Intent(this, CameraBlockerService::class.java))
