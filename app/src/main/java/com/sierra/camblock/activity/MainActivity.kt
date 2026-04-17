@@ -45,6 +45,7 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
 import kotlin.jvm.java
+import kotlin.math.log
 
 class MainActivity : AppCompatActivity() {
 
@@ -417,7 +418,7 @@ class MainActivity : AppCompatActivity() {
             deviceId = deviceId,
             deviceInfo = deviceInfo
         )
-
+        Log.e(javaClass.name, "processEntryScan: $token")
         val response = RetrofitClient.apiService.scanEntry(request)
 
         if (response.isSuccessful && response.body()?.status == "success") {
@@ -435,7 +436,7 @@ class MainActivity : AppCompatActivity() {
             token = token,
             deviceId = deviceId
         )
-
+        Log.e(javaClass.name, "processExitScan: $request")
         val response = RetrofitClient.apiService.scanExit(request)
 
         if (response.isSuccessful && response.body()?.status == "success") {

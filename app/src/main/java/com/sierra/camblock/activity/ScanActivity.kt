@@ -86,6 +86,7 @@ class ScanActivity : AppCompatActivity() {
             override fun barcodeResult(result: BarcodeResult) {
                 if (result.text != null && result.text != lastScanResult) {
                     lastScanResult = result.text
+                    Log.e(javaClass.name, "barcodeResult: ${result.text}")
                     beepManager.playBeepSoundAndVibrate()
                     handleScanResult(result.text)
                 }
@@ -193,6 +194,7 @@ class ScanActivity : AppCompatActivity() {
             token = token,
             deviceId = deviceId
         )
+        Log.e(javaClass.name, "processExitScan: $request")
 
         val response = RetrofitClient.apiService.scanExit(request)
         if (response.isSuccessful) {
@@ -200,6 +202,7 @@ class ScanActivity : AppCompatActivity() {
             val successBody = response.body()
             if (successBody?.status == "success") {
                 unlockAndRemoveAdmin()
+                prefsManager.visitorId = ""
             } else {
                 showErrorDialog(successBody?.message ?: "Exit failed.")
                 finish()
@@ -272,6 +275,7 @@ class ScanActivity : AppCompatActivity() {
             deviceId = deviceId,
             deviceInfo = deviceInfo
         )
+        Log.e(javaClass.name, "processEntryScan: $request")
 
         try {
             val response = RetrofitClient.apiService.scanEntry(request)
@@ -282,6 +286,7 @@ class ScanActivity : AppCompatActivity() {
                     // Success! Proceed to Admin request
                     requestDeviceAdmin()
                     visitorId = response.body()?.data?.visitorId?: ""
+                    prefsManager.visitorId = response.body()?.data?.visitorId?: ""
                 } else {
                     // Server returned 200 but status was "failure" or similar
                     showErrorDialog(apiBody?.message ?: "Entry denied.")

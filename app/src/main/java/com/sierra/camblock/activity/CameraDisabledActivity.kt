@@ -42,7 +42,7 @@ class CameraDisabledActivity : AppCompatActivity() {
         intent.getStringExtra("visitorId")?.let {
             visitorId = it
         }
-        binding.tvVisitorID.text = visitorId
+        binding.tvVisitorID.text = prefsManager.visitorId
         initFields()
         initClickListeners()
         requestBatteryOptimizationPermission()

@@ -33,6 +33,10 @@ class PrefsManager(context: Context) {
         get() = prefs.getString(KEY_ENTRY_TOKEN, null)
         set(value) = prefs.edit().putString(KEY_ENTRY_TOKEN, value).apply()
 
+    var visitorId: String?
+        get() = prefs.getString("visitor_id", null)
+        set(value) = prefs.edit().putString("visitor_id", value).apply()
+
     var isXiaomiSetupDone: Boolean
         get() = prefs.getBoolean("xiaomi_setup_done", false)
         set(value) = prefs.edit().putBoolean("xiaomi_setup_done", value).apply()

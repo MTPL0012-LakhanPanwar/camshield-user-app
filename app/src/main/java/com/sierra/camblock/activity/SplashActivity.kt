@@ -59,16 +59,8 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun allPermissionsGranted(): Boolean {
-        return hasCameraPermission() &&
-                hasUsageStatsPermission() &&
-                hasOverlayPermission() &&
-                isIgnoringBatteryOptimizations()
-    }
-
-    private fun hasCameraPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            this, Manifest.permission.CAMERA
-        ) == PackageManager.PERMISSION_GRANTED
+        return hasUsageStatsPermission() &&
+                hasOverlayPermission()
     }
 
     private fun hasUsageStatsPermission(): Boolean {
@@ -92,10 +84,5 @@ class SplashActivity : AppCompatActivity() {
 
     private fun hasOverlayPermission(): Boolean {
         return Settings.canDrawOverlays(this)
-    }
-
-    private fun isIgnoringBatteryOptimizations(): Boolean {
-        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        return powerManager.isIgnoringBatteryOptimizations(packageName)
     }
 }
