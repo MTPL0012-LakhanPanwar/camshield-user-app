@@ -4,6 +4,7 @@ import android.app.ActivityManager
 import android.app.Dialog
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
@@ -17,6 +18,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.WindowInsetsCompat
 import com.sierra.camblock.CameraBlockerService
 import com.sierra.camblock.R
@@ -47,6 +49,7 @@ class CameraDisabledActivity : AppCompatActivity() {
         binding = ActivityCameraDisabledBinding.inflate(layoutInflater)
         setContentView(binding.root)
         prefsManager = PrefsManager(this)
+        applySystemBarsAppearance()
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
@@ -59,6 +62,19 @@ class CameraDisabledActivity : AppCompatActivity() {
         initFields()
         initClickListeners()
         ensureBatteryOptimizationPermission()
+    }
+
+    private fun applySystemBarsAppearance() {
+        val systemBarColor = Color.parseColor("#0B101F")
+        window.statusBarColor = systemBarColor
+        window.navigationBarColor = systemBarColor
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+        }
     }
 
     override fun onResume() {

@@ -25,6 +25,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.sierra.camblock.CameraBlockerService
@@ -128,9 +129,24 @@ class MainActivity : AppCompatActivity() {
         deviceAdminManager = DeviceAdminManager(this)
         prefsManager = PrefsManager(this)
 
+        applySystemBarsAppearance()
         setupWindowInsets()
         setupClickListeners()
     }
+
+    private fun applySystemBarsAppearance() {
+        val systemBarColor = ContextCompat.getColor(this, R.color.parent_bg)
+        window.statusBarColor = systemBarColor
+        window.navigationBarColor = systemBarColor
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+        }
+    }
+
     private fun setupWindowInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
