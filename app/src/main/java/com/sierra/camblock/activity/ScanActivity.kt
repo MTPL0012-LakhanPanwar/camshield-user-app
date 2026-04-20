@@ -40,6 +40,8 @@ import com.sierra.camblock.manager.DeviceAdminManager
 import com.sierra.camblock.utils.Constants
 import com.sierra.camblock.utils.DeviceUtils
 import com.sierra.camblock.utils.PrefsManager
+import com.sierra.camblock.utils.applyDarkSystemBarsColor
+import android.graphics.Color
 import com.sierra.camblock.R
 import com.sierra.camblock.databinding.ActivityScanBinding
 import kotlinx.coroutines.launch
@@ -79,6 +81,7 @@ class ScanActivity : AppCompatActivity() {
         enableEdgeToEdge()
         binding = ActivityScanBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        applyDarkSystemBarsColor(Color.parseColor("#0B101F"))
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)

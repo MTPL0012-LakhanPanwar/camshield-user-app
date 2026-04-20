@@ -15,6 +15,7 @@ import androidx.core.view.WindowInsetsCompat
 import com.sierra.camblock.R
 import com.sierra.camblock.databinding.ActivitySplashBinding
 import com.sierra.camblock.manager.DeviceAdminManager
+import com.sierra.camblock.utils.applyDarkSystemBars
 
 class SplashActivity : AppCompatActivity() {
     private lateinit var binding : ActivitySplashBinding
@@ -25,6 +26,7 @@ class SplashActivity : AppCompatActivity() {
         enableEdgeToEdge()
         binding = ActivitySplashBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        applyDarkSystemBars()
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)

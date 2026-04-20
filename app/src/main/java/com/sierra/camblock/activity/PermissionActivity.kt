@@ -16,6 +16,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.sierra.camblock.R
 import com.sierra.camblock.databinding.ActivityPermissionBinding
+import com.sierra.camblock.utils.applyDarkSystemBars
 
 class PermissionActivity : AppCompatActivity() {
     private lateinit var binding: ActivityPermissionBinding
@@ -32,6 +33,7 @@ class PermissionActivity : AppCompatActivity() {
         enableEdgeToEdge()
         binding = ActivityPermissionBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        applyDarkSystemBars(R.color.parent_bg)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)

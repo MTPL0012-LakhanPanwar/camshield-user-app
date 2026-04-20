@@ -202,17 +202,12 @@
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnContinue"
+        style="@style/PrimaryCtaButton"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
         android:layout_marginHorizontal="14dp"
         android:layout_marginBottom="18dp"
         android:backgroundTint="@color/btn_disabled"
         android:text="Continue"
-        android:textAllCaps="false"
-        android:textColor="#FFFFFF"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:cornerRadius="24dp"
         app:layout_constraintBottom_toBottomOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

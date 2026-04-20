@@ -272,19 +272,13 @@
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnScanEntry"
+        style="@style/PrimaryCtaButton"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
         android:layout_marginHorizontal="18dp"
         android:layout_marginBottom="30dp"
         android:backgroundTint="@color/btn_blue"
         android:text="Scan Exit QR"
-        android:textAllCaps="false"
-        android:textColor="@color/white"
-        android:textSize="18sp"
-        app:cornerRadius="24dp"
         app:icon="@drawable/icon_qr"
-        app:iconGravity="textStart"
-        app:iconPadding="12dp"
         app:layout_constraintBottom_toBottomOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

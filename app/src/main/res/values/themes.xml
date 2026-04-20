@@ -10,13 +10,17 @@
         <item name="colorSecondary">@color/brand_secondary</item>
         <item name="colorSecondaryVariant">@color/brand_secondary</item>
         <item name="colorOnSecondary">@color/text_primary</item>
-        <item name="android:windowLightStatusBar">true</item>
 
-        <!-- Status bar color. -->
-        <item name="android:statusBarColor">@color/brand_primary</item>
-        
+        <!-- Light text/icons on status & navigation bars (app uses dark backgrounds). -->
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+
+        <!-- Status / navigation bar colors match the dark app background. -->
+        <item name="android:statusBarColor">@color/parent_bg</item>
+        <item name="android:navigationBarColor">@color/parent_bg</item>
+
         <!-- Background -->
-        <item name="android:windowBackground">@color/brand_background</item>
+        <item name="android:windowBackground">@color/parent_bg</item>
     </style>
     <style name="SwitchActivatedColor">
         <item name="colorControlActivated">#1E61EB</item>
@@ -25,10 +29,13 @@
     <!-- Splash Screen Theme -->
     <style name="Theme.App.Starting" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="android:windowBackground">@drawable/splash_background</item>
-        <item name="android:statusBarColor">@color/brand_primary</item>
-        
+        <item name="android:statusBarColor">@color/splash_bg_two</item>
+        <item name="android:navigationBarColor">@color/splash_bg_two</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+
         <!-- Android 12+ Splash Screen Attributes -->
-        <item name="android:windowSplashScreenBackground">@color/brand_primary</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_bg_two</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/logo_jabil_splash</item>
         <item name="android:windowSplashScreenBrandingImage">@drawable/logo_jabil_splash</item>
     </style>
@@ -47,6 +54,22 @@
         <item name="android:paddingVertical">12dp</item>
         <item name="android:textSize">16sp</item>
         <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Standard primary CTA button used at the bottom of screens. -->
+    <style name="PrimaryCtaButton" parent="Widget.MaterialComponents.Button">
+        <item name="android:layout_height">56dp</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="cornerRadius">24dp</item>
+        <item name="iconGravity">textStart</item>
+        <item name="iconPadding">12dp</item>
     </style>
     
     <style name="ButtonStyle.Entry">
