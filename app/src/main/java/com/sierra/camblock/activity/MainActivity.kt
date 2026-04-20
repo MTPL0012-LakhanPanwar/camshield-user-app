@@ -13,6 +13,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.os.Process
 import android.provider.Settings
 import android.util.Log
@@ -132,6 +133,33 @@ class MainActivity : AppCompatActivity() {
         applySystemBarsAppearance()
         setupWindowInsets()
         setupClickListeners()
+    }
+
+    /**
+     * Surface the native battery-optimization prompt when the app is not yet
+     * whitelisted. Fires ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS directly,
+     * so Android shows its own system dialog — tapping through takes the user
+     * to the battery optimization settings for this app. No-op when already
+     * granted so the screen is not re-prompted on every resume.
+     */
+    private fun requestBatteryOptimizationIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (powerManager.isIgnoringBatteryOptimizations(packageName)) return
+        val requestIntent = Intent(
+            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+            Uri.parse("package:$packageName")
+        )
+        try {
+            startActivity(requestIntent)
+        } catch (e: Exception) {
+            Log.w(TAG, "Primary battery-optim request failed, using settings fallback", e)
+            try {
+                startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            } catch (e2: Exception) {
+                Log.e(TAG, "Battery optimization settings launch failed", e2)
+            }
+        }
     }
 
     private fun applySystemBarsAppearance() {
@@ -466,6 +494,12 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         //updateUI()
+
+        // Re-check battery optimization on every resume so that users returning
+        // from the system dialog or OEM battery settings without granting the
+        // permission are re-prompted. The method itself is a no-op once the
+        // permission is granted, so there is no spam loop.
+        requestBatteryOptimizationIfNeeded()
 
         if (isWaitingForPermission) {
             isWaitingForPermission = false
