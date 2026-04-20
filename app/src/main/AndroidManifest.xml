@@ -8,7 +8,6 @@
     <uses-permission android:name="android.permission.MANAGE_DEVICE_POLICY_CAMERA" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <uses-permission
         android:name="android.permission.PACKAGE_USAGE_STATS"
@@ -69,10 +68,10 @@
             android:name=".CameraBlockerService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="specialUse|camera">
+            android:foregroundServiceType="specialUse">
             <property
-                android:name="android.app.property.FOREGROUND_SERVICE_TYPE"
-                android:value="specialUse|camera" />
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Monitors camera availability and presents a blocking overlay while the visitor is inside a restricted area." />
         </service>
 
         <receiver
