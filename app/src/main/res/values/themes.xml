@@ -10,13 +10,17 @@
         <item name="colorSecondary">@color/brand_secondary</item>
         <item name="colorSecondaryVariant">@color/brand_secondary</item>
         <item name="colorOnSecondary">@color/text_primary</item>
-        <item name="android:windowLightStatusBar">true</item>
 
-        <!-- Status bar color. -->
-        <item name="android:statusBarColor">@color/brand_primary</item>
-        
+        <!-- Light text/icons on status & navigation bars (app uses dark backgrounds). -->
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+
+        <!-- Status / navigation bar colors match the dark app background. -->
+        <item name="android:statusBarColor">@color/parent_bg</item>
+        <item name="android:navigationBarColor">@color/parent_bg</item>
+
         <!-- Background -->
-        <item name="android:windowBackground">@color/brand_background</item>
+        <item name="android:windowBackground">@color/parent_bg</item>
     </style>
     <style name="SwitchActivatedColor">
         <item name="colorControlActivated">#1E61EB</item>
@@ -25,10 +29,13 @@
     <!-- Splash Screen Theme -->
     <style name="Theme.App.Starting" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="android:windowBackground">@drawable/splash_background</item>
-        <item name="android:statusBarColor">@color/brand_primary</item>
-        
+        <item name="android:statusBarColor">@color/splash_bg_two</item>
+        <item name="android:navigationBarColor">@color/splash_bg_two</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+
         <!-- Android 12+ Splash Screen Attributes -->
-        <item name="android:windowSplashScreenBackground">@color/brand_primary</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_bg_two</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/logo_jabil_splash</item>
         <item name="android:windowSplashScreenBrandingImage">@drawable/logo_jabil_splash</item>
     </style>
@@ -48,6 +55,22 @@
         <item name="android:textSize">16sp</item>
         <item name="android:textStyle">bold</item>
     </style>
+
+    <!-- Standard primary CTA button used at the bottom of screens. -->
+    <style name="PrimaryCtaButton" parent="Widget.MaterialComponents.Button">
+        <item name="android:layout_height">56dp</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="cornerRadius">24dp</item>
+        <item name="iconGravity">textStart</item>
+        <item name="iconPadding">12dp</item>
+    </style>
     
     <style name="ButtonStyle.Entry">
         <item name="backgroundTint">@color/brand_primary</item>
@@ -60,5 +83,77 @@
     <style name="ButtonStyle.Outline" parent="Widget.MaterialComponents.Button.OutlinedButton">
         <item name="strokeColor">@color/brand_primary</item>
         <item name="android:textColor">@color/brand_primary</item>
+    </style>
+
+    <!-- ============================ Help screen styles ============================ -->
+    <!-- Dark rounded card used as each section container on the Help screen. -->
+    <style name="HelpCard">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">12dp</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:background">@drawable/bg_card_dark</item>
+        <item name="android:padding">18dp</item>
+    </style>
+
+    <!-- Horizontal row containing a leading badge / icon and a text block. -->
+    <style name="HelpStepRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:gravity">center_vertical</item>
+    </style>
+
+    <!-- Numbered circular badge for How-to-Use steps. -->
+    <style name="HelpStepBadge">
+        <item name="android:layout_width">36dp</item>
+        <item name="android:layout_height">36dp</item>
+        <item name="android:background">@drawable/bg_help_step_blue</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Small colored status dot (tinted at call-site). -->
+    <style name="HelpStatusDot">
+        <item name="android:layout_width">14dp</item>
+        <item name="android:layout_height">14dp</item>
+        <item name="android:src">@drawable/bg_help_status_dot</item>
+    </style>
+
+    <!-- Uniform permission-row icon size used on the Help screen. -->
+    <style name="HelpPermIcon">
+        <item name="android:layout_width">32dp</item>
+        <item name="android:layout_height">32dp</item>
+        <item name="android:scaleType">fitCenter</item>
+    </style>
+
+    <!-- Primary text inside a help row (item title). -->
+    <style name="HelpItemTitle">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Secondary description under a help row. -->
+    <style name="HelpItemSubtitle">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">2dp</item>
+        <item name="android:textColor">#8A92A6</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <!-- Bullet line used in Troubleshooting / Need Help lists. -->
+    <style name="HelpBullet">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">8dp</item>
+        <item name="android:lineSpacingExtra">3dp</item>
+        <item name="android:textColor">#8A92A6</item>
+        <item name="android:textSize">14sp</item>
     </style>
 </resources>

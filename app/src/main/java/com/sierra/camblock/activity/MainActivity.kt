@@ -13,7 +13,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.PowerManager
 import android.os.Process
 import android.provider.Settings
 import android.util.Log
@@ -26,16 +25,15 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
-import com.google.zxing.integration.android.IntentIntegrator
 import com.sierra.camblock.CameraBlockerService
 import com.sierra.camblock.R
 import com.sierra.camblock.api.RetrofitClient
 import com.sierra.camblock.api.models.DeviceInfo
 import com.sierra.camblock.api.models.ScanEntryRequest
 import com.sierra.camblock.api.models.ScanExitRequest
-import com.sierra.camblock.camera.AnyOrientationCaptureActivity
 import com.sierra.camblock.databinding.ActivityMainBinding
 import com.sierra.camblock.manager.DeviceAdminManager
 import com.sierra.camblock.utils.Constants
@@ -44,7 +42,6 @@ import com.sierra.camblock.utils.PrefsManager
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
-import kotlin.jvm.java
 
 class MainActivity : AppCompatActivity() {
 
@@ -62,6 +59,46 @@ class MainActivity : AppCompatActivity() {
     // Current QR scan action
     private var currentScanAction: ScanAction = ScanAction.NONE
     private enum class ScanAction { NONE, ENTRY, EXIT }
+    private var openEntryScanAfterSettings: Boolean = false
+
+    private val entryCameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            launchEntryScanActivity()
+        } else if (!shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
+            showEntryCameraSettingsDialog()
+        } else {
+            Toast.makeText(this, "Camera permission is required to scan entry QR.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val entryCameraSettingsLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (openEntryScanAfterSettings &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        ) {
+            launchEntryScanActivity()
+        }
+        openEntryScanAfterSettings = false
+    }
+
+    private val scanOnlyResultLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val scannedValue = result.data?.getStringExtra(ScanActivity.EXTRA_SCANNED_QR)
+        if (result.resultCode == RESULT_OK && !scannedValue.isNullOrBlank()) {
+            handleScanResult(scannedValue)
+        } else {
+            Toast.makeText(this, "Scan Cancelled", Toast.LENGTH_SHORT).show()
+            if (currentScanAction == ScanAction.EXIT) {
+                deviceAdminManager.lockCamera()
+                updateUI()
+            }
+            currentScanAction = ScanAction.NONE
+        }
+    }
 
 
     // ==================== Lifecycle Methods ====================
@@ -92,10 +129,24 @@ class MainActivity : AppCompatActivity() {
         deviceAdminManager = DeviceAdminManager(this)
         prefsManager = PrefsManager(this)
 
+        applySystemBarsAppearance()
         setupWindowInsets()
         setupClickListeners()
-        requestBatteryOptimizationExemption()
     }
+
+    private fun applySystemBarsAppearance() {
+        val systemBarColor = ContextCompat.getColor(this, R.color.parent_bg)
+        window.statusBarColor = systemBarColor
+        window.navigationBarColor = systemBarColor
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+        }
+    }
+
     private fun setupWindowInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -104,18 +155,56 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun requestBatteryOptimizationExemption() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val intent = Intent()
-            val packageName = packageName
-            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-            if (!pm.isIgnoringBatteryOptimizations(packageName)) {
-                intent.action = Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
-                intent.data = android.net.Uri.parse("package:$packageName")
-                startActivity(intent)
-            }
+    private fun handleEntryScanClick() {
+        val hasCameraPermission = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasCameraPermission) {
+            launchEntryScanActivity()
+            return
+        }
+
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.CAMERA)) {
+            showEntryCameraRationaleDialog()
+        } else {
+            entryCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
+
+    private fun showEntryCameraRationaleDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Camera Permission Required")
+            .setMessage("Camera access is required to scan your entry QR code.")
+            .setPositiveButton("Grant") { _, _ ->
+                entryCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showEntryCameraSettingsDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Camera Permission Denied")
+            .setMessage("Please enable camera permission in app settings to scan entry QR.")
+            .setPositiveButton("Open Settings") { _, _ ->
+                openEntryScanAfterSettings = true
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", packageName, null)
+                }
+                entryCameraSettingsLauncher.launch(intent)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun launchEntryScanActivity() {
+        val intent = Intent(this, ScanActivity::class.java)
+        intent.putExtra("SCAN_ACTION", "ENTRY")
+        startActivity(intent)
+    }
+
     private fun showSettingsRedirectDialog(message: String) {
         AlertDialog.Builder(this)
             .setTitle("Permission Required")
@@ -220,9 +309,7 @@ class MainActivity : AppCompatActivity() {
             if (!DeviceUtils.isInternetAvailable(this)){
                 showCustomNoInternetDialog(this)
             }else{
-                val intent = Intent(this, ScanActivity::class.java)
-                intent.putExtra("SCAN_ACTION", "ENTRY")
-                startActivity(intent)
+                handleEntryScanClick()
             }
         }
         binding.btnScanExit.setOnClickListener {
@@ -386,37 +473,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
     private fun startQRScan() {
-        val integrator = IntentIntegrator(this)
-        integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE)
-        integrator.setPrompt("Scan ${if (currentScanAction == ScanAction.ENTRY) "Entry" else "Exit"} QR Code")
-        // Remove setCameraId(0) to allow default selection (fixes some device issues)
-        // integrator.setCameraId(0)
-        integrator.setBeepEnabled(true)
-        integrator.setBarcodeImageEnabled(false)
-        integrator.setOrientationLocked(false) // Fixes some orientation/init issues
-        integrator.setCaptureActivity(AnyOrientationCaptureActivity::class.java) // See step 3
-        integrator.initiateScan()
+        val intent = Intent(this, ScanActivity::class.java).apply {
+            putExtra(ScanActivity.EXTRA_SCAN_ONLY, true)
+        }
+        scanOnlyResultLauncher.launch(intent)
     }
 
     // Handle QR Scan Result
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        // Handle QR Result
-        val result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
-        if (result != null) {
-            if (result.contents != null) {
-                handleScanResult(result.contents)
-            } else {
-                Toast.makeText(this, "Scan Cancelled", Toast.LENGTH_SHORT).show()
-
-                // Re-lock if cancelled during Exit flow
-                if (currentScanAction == ScanAction.EXIT) {
-                    deviceAdminManager.lockCamera()
-                    updateUI()
-                }
-            }
-            return
-        }
-
         // Handle Device Admin Result
         if (requestCode == Constants.DEVICE_ADMIN_REQUEST_CODE) {
             if (resultCode == RESULT_OK || deviceAdminManager.isDeviceAdminActive()) {
@@ -681,6 +745,7 @@ class MainActivity : AppCompatActivity() {
     private fun unlockAndRemoveAdmin() {
         // Clear lock state
         prefsManager.isLocked = false
+        prefsManager.activeVisitorId = ""
 
         // 1. Stop Software Lock (Service)
         stopService(Intent(this, CameraBlockerService::class.java))

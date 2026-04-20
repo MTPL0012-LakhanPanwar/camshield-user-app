@@ -4,14 +4,21 @@ import android.app.ActivityManager
 import android.app.Dialog
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import android.view.View
 import android.widget.Button
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.WindowInsetsCompat
 import com.sierra.camblock.CameraBlockerService
 import com.sierra.camblock.R
@@ -24,6 +31,19 @@ class CameraDisabledActivity : AppCompatActivity() {
     private lateinit var binding : ActivityCameraDisabledBinding
     private lateinit var prefsManager: PrefsManager
     private var visitorId: String = ""
+    private var batteryPermissionDialog: AlertDialog? = null
+
+    private val batteryOptimizationLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (isIgnoringBatteryOptimizations()) {
+            Toast.makeText(this, "Battery optimization disabled for Cam Shield.", Toast.LENGTH_SHORT).show()
+            batteryPermissionDialog?.dismiss()
+        } else {
+            Toast.makeText(this, "Battery optimization permission is still pending.", Toast.LENGTH_SHORT).show()
+            ensureBatteryOptimizationPermission()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,17 +51,51 @@ class CameraDisabledActivity : AppCompatActivity() {
         binding = ActivityCameraDisabledBinding.inflate(layoutInflater)
         setContentView(binding.root)
         prefsManager = PrefsManager(this)
+        applySystemBarsAppearance()
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-        intent.getStringExtra("visitorId")?.let {
-            visitorId = it
-        }
-        binding.tvVisitorID.text = visitorId
+        restoreVisitorId()
         initFields()
         initClickListeners()
+        ensureBatteryOptimizationPermission()
+    }
+
+    private fun restoreVisitorId() {
+        val visitorIdFromIntent = intent.getStringExtra("visitorId").orEmpty()
+        visitorId = if (visitorIdFromIntent.isNotBlank()) {
+            prefsManager.activeVisitorId = visitorIdFromIntent
+            visitorIdFromIntent
+        } else {
+            prefsManager.activeVisitorId
+        }
+        binding.tvVisitorID.text = visitorId
+    }
+
+    private fun applySystemBarsAppearance() {
+        val systemBarColor = Color.parseColor("#0B101F")
+        window.statusBarColor = systemBarColor
+        window.navigationBarColor = systemBarColor
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        ensureBatteryOptimizationPermission()
+    }
+
+    override fun onDestroy() {
+        batteryPermissionDialog?.dismiss()
+        batteryPermissionDialog = null
+        super.onDestroy()
     }
 
     fun isKioskModeActive(): Boolean {
@@ -121,6 +175,49 @@ class CameraDisabledActivity : AppCompatActivity() {
                 startService(serviceIntent)
             }
         }
+    }
+
+    private fun ensureBatteryOptimizationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        if (isIgnoringBatteryOptimizations()) {
+            batteryPermissionDialog?.dismiss()
+            batteryPermissionDialog = null
+            return
+        }
+        if (batteryPermissionDialog?.isShowing == true) return
+
+        batteryPermissionDialog = AlertDialog.Builder(this)
+            .setTitle("Battery Optimization Permission")
+            .setMessage("Allow Cam Shield to ignore battery optimization so background protection remains active during your session.")
+            .setPositiveButton("Grant") { _, _ ->
+                requestBatteryOptimizationPermission()
+            }
+            .setCancelable(false)
+            .create()
+
+        batteryPermissionDialog?.show()
+    }
+
+    private fun requestBatteryOptimizationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+
+        val requestIntent = Intent(
+            Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+            android.net.Uri.parse("package:$packageName")
+        )
+
+        try {
+            batteryOptimizationLauncher.launch(requestIntent)
+        } catch (e: Exception) {
+            val fallbackIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+            batteryOptimizationLauncher.launch(fallbackIntent)
+        }
+    }
+
+    private fun isIgnoringBatteryOptimizations(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        return powerManager.isIgnoringBatteryOptimizations(packageName)
     }
 
 }
