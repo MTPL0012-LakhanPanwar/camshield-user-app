@@ -472,9 +472,16 @@ class ScanActivity : AppCompatActivity() {
                 finish()
             }
         } catch (e: Exception) {
-            // Handle network failures (No internet, Timeout)
-            Log.e(javaClass.name, "Network Exception: ${e.message}")
-            showErrorDialog("Network error. Please try again.")
+            // Handle network failures (No internet, Timeout) or any other
+            // unexpected error. Use a fixed LOG tag ("CamShield.Scan") because
+            // `javaClass.name` is obfuscated in release and impossible to
+            // grep for in logcat. Surface the exception *type* to the user
+            // so field failures are self-diagnosing without needing a USB
+            // logcat attach — e.g. "UnknownHostException" vs
+            // "JsonSyntaxException" vs "SSLHandshakeException".
+            val type = e.javaClass.simpleName
+            Log.e("CamShield.Scan", "scanEntry failed: $type - ${e.message}", e)
+            showErrorDialog("Network error ($type). Please try again.")
             finish()
         }
     }

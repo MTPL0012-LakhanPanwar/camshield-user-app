@@ -56,21 +56,47 @@
 # null. The scan-entry flow in ScanActivity (`apiBody.data?.visitorId`)
 # would then always be null and the whole lock flow would break.
 #
-# The rule below freezes field names and the no-arg constructor for our
-# DTO package ONLY (not a blanket library keep). Class names may still be
-# obfuscated (`allowobfuscation`) and unused classes may still be pruned
-# (`allowshrinking` is the R8 default for -keepclassmembers). Net APK
-# cost: a few hundred bytes.
--keepclassmembers,allowobfuscation class com.sierra.camblock.api.models.** {
-    <init>(...);
-    <fields>;
-}
+# The rule below freezes field names AND the no-arg / all-args
+# constructors for our DTO package ONLY. Note: `allowobfuscation` is
+# deliberately NOT used — it would still permit R8 to rename the fields,
+# defeating the entire point of this rule (Gson reads the original
+# Java field name via reflection). We also keep class names so Retrofit's
+# generic type resolution (`Response<ApiResponse<EnrollmentResponse>>`)
+# stays consistent at runtime.
+-keep class com.sierra.camblock.api.models.** { *; }
+
+# R8 full-mode belt-and-braces: even with full-mode disabled in
+# gradle.properties, explicitly retain generic signatures on our DTOs so
+# Gson can resolve T in ApiResponse<T>. `allowobfuscation,allowshrinking`
+# here lets R8 still prune/rename the CLASS (fields are kept by the rule
+# above); what matters is that the Signature attribute on each class
+# survives so Retrofit can read the parameterised return type at runtime.
+# Without this, T erases to Object, Gson produces a LinkedTreeMap, and
+# the Kotlin-inserted CHECKCAST in `ScanActivity.kt:449`
+# (`apiBody.data?.visitorId`) throws ClassCastException on release only.
+-keep,allowobfuscation,allowshrinking class com.sierra.camblock.api.models.ApiResponse
+-keep,allowobfuscation,allowshrinking class com.sierra.camblock.api.models.EnrollmentResponse
+-keep,allowobfuscation,allowshrinking class com.sierra.camblock.api.models.ValidateQRResponse
+-keep,allowobfuscation,allowshrinking class com.sierra.camblock.api.models.EnrollmentStatusResponse
 
 # Project-wide safety net: any field annotated @SerializedName keeps its
 # original name. Zero APK cost because only annotated fields qualify.
--keepclassmembers,allowobfuscation class * {
+-keepclassmembers class * {
     @com.google.gson.annotations.SerializedName <fields>;
 }
+
+# Enum safety: Gson matches enum values via the exact constant name string
+# (or @SerializedName on the constant). Obfuscation would break this.
+-keepclassmembers enum * {
+    @com.google.gson.annotations.SerializedName <fields>;
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+# Gson relies on these attributes at runtime for generic type resolution
+# and for reading @SerializedName. Retrofit's consumer rules already keep
+# Signature; these duplicates are cheap insurance.
+-keepattributes Signature,*Annotation*,EnclosingMethod,InnerClasses
 
 
 # ------------------------------------------------------------------------------
