@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Circular tile used behind permission-row icons on the Help screen so that
+    glyph-only icons (e.g. ic_camera_on) visually match compound icons that
+    already ship with their own circular tint background (ic_top_permission,
+    ic_permi_restore). Color / alpha mirror those compound drawables.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#1A135BEC" />
+</shape>

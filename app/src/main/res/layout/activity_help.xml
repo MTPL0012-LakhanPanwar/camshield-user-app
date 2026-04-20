@@ -1,4 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Help & Guide screen.
+
+    Design notes:
+    - Uses the same visual system as the rest of the app:
+        * Root background: bg_radiating_glow
+        * Section container: bg_card_dark (#141B2D, 16dp corners)
+        * Primary text:   #FFFFFF
+        * Secondary text: #8A92A6
+        * Accent:         @color/btn_blue (#135BEC)
+        * Success dot:    #00C853   Danger dot: #FF4D4D
+    - No business logic is affected. HelpActivity only touches the toolbar.
+-->
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -16,10 +29,12 @@
         android:elevation="10dp"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <ScrollView
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:fillViewport="true"
+        android:clipToPadding="false"
+        android:overScrollMode="never"
+        android:paddingBottom="24dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -29,807 +44,406 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:paddingHorizontal="16dp"
+            android:paddingTop="8dp">
 
-            <!-- App Overview Card -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackground"
-                app:cardBackgroundColor="@color/parent_bg"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="8dp">
+            <!-- ===================== App Overview ===================== -->
+            <LinearLayout style="@style/HelpCard">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="24dp">
+                <LinearLayout style="@style/HelpStepRow">
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="16dp"
-                        android:gravity="center_vertical">
-
-                        <ImageView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
-                            android:layout_marginEnd="12dp"
-                            android:src="@drawable/ic_logo" />
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:fontFamily="sans-serif-medium"
-                            android:text="Camera Security App"
-                            android:textColor="#FFFFFF"
-                            android:textSize="22sp"
-                            android:textStyle="bold" />
-
-                    </LinearLayout>
+                    <ImageView
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/bg_help_icon_tile"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_logo"
+                        android:contentDescription="App icon" />
 
                     <TextView
-                        android:layout_width="match_parent"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:justificationMode="inter_word"
-                        android:lineSpacingExtra="6dp"
-                        android:text="This app manages camera access for secure facility entry and exit. Your device camera is automatically locked when entering and unlocked when exiting secure areas."
-                        android:textColor="#E0E0E0"
-                        android:textSize="16sp" />
-
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:text="Camera Security App"
+                        android:textColor="#FFFFFF"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
                 </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
-
-            <!-- How to Use Section -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackground"
-                app:cardBackgroundColor="@color/parent_bg"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="8dp">
-
-                <LinearLayout
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="24dp">
+                    android:layout_marginTop="14dp"
+                    android:lineSpacingExtra="4dp"
+                    android:text="This app manages camera access for secure facility entry and exit. Your device camera is automatically locked when entering and unlocked when exiting secure areas."
+                    android:textColor="#8A92A6"
+                    android:textSize="14sp" />
+            </LinearLayout>
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
+            <!-- ===================== How to Use ===================== -->
+            <LinearLayout style="@style/HelpCard">
+
+                <LinearLayout style="@style/HelpStepRow">
+
+                    <ImageView
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/bg_help_icon_tile"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_help_two"
+                        android:contentDescription="How to Use" />
+
+                    <TextView
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="20dp"
-                        android:gravity="center_vertical">
-
-                        <ImageView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
-                            android:layout_marginEnd="12dp"
-                            android:src="@drawable/ic_help_two" />
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:fontFamily="sans-serif-medium"
-                            android:text="How to Use"
-                            android:textColor="#FFFFFF"
-                            android:textSize="22sp"
-                            android:textStyle="bold" />
-
-                    </LinearLayout>
-
-                    <!-- Entry Process -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="16dp"
-                        android:background="#1A4CAF50"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:padding="16dp">
-
-                        <TextView
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
-                            android:background="#4CAF50"
-                            android:gravity="center"
-                            android:text="1"
-                            android:textColor="@android:color/white"
-                            android:textSize="20sp"
-                            android:textStyle="bold" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="16dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="sans-serif-medium"
-                                android:text="Entry - Lock Camera"
-                                android:textColor="#4CAF50"
-                                android:textSize="18sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:text="Scan Entry QR code at facility entrance"
-                                android:textColor="#E0E0E0"
-                                android:textSize="15sp" />
-
-                        </LinearLayout>
-
-                    </LinearLayout>
-
-                    <!-- Exit Process -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:background="#1AFF9800"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:padding="16dp">
-
-                        <TextView
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
-                            android:background="#FF9800"
-                            android:gravity="center"
-                            android:text="2"
-                            android:textColor="@android:color/white"
-                            android:textSize="20sp"
-                            android:textStyle="bold" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="16dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="sans-serif-medium"
-                                android:text="Exit - Unlock Camera"
-                                android:textColor="#FF9800"
-                                android:textSize="18sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:text="Scan Exit QR code when leaving facility"
-                                android:textColor="#E0E0E0"
-                                android:textSize="15sp" />
-
-                        </LinearLayout>
-
-                    </LinearLayout>
-
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:text="How to Use"
+                        android:textColor="#FFFFFF"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
                 </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
-
-            <!-- Status Indicators -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackground"
-                app:cardBackgroundColor="@color/parent_bg"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="8dp">
-
+                <!-- Step 1 : Entry / Lock -->
                 <LinearLayout
+                    style="@style/HelpStepRow"
+                    android:layout_marginTop="16dp">
+
+                    <TextView
+                        style="@style/HelpStepBadge"
+                        android:text="1" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/HelpItemTitle"
+                            android:text="Entry — Lock Camera" />
+
+                        <TextView
+                            style="@style/HelpItemSubtitle"
+                            android:text="Scan the Entry QR code at the facility entrance." />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Step 2 : Exit / Unlock -->
+                <LinearLayout
+                    style="@style/HelpStepRow"
+                    android:layout_marginTop="14dp">
+
+                    <TextView
+                        style="@style/HelpStepBadge"
+                        android:text="2" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/HelpItemTitle"
+                            android:text="Exit — Unlock Camera" />
+
+                        <TextView
+                            style="@style/HelpItemSubtitle"
+                            android:text="Scan the Exit QR code when leaving the facility." />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- ===================== Status Indicators ===================== -->
+            <LinearLayout style="@style/HelpCard">
+
+                <LinearLayout style="@style/HelpStepRow">
+
+                    <ImageView
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/bg_help_icon_tile"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_shield_gray"
+                        android:contentDescription="Status Indicators"
+                        app:tint="#8A92A6" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:text="Status Indicators"
+                        android:textColor="#FFFFFF"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Locked -->
+                <LinearLayout
+                    style="@style/HelpStepRow"
+                    android:layout_marginTop="16dp">
+
+                    <ImageView
+                        style="@style/HelpStatusDot"
+                        android:contentDescription="Locked"
+                        app:tint="#FF4D4D" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/HelpItemTitle"
+                            android:text="Locked"
+                            android:textColor="#FF4D4D" />
+
+                        <TextView
+                            style="@style/HelpItemSubtitle"
+                            android:text="Camera access is disabled." />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Unlocked -->
+                <LinearLayout
+                    style="@style/HelpStepRow"
+                    android:layout_marginTop="14dp">
+
+                    <ImageView
+                        style="@style/HelpStatusDot"
+                        android:contentDescription="Unlocked"
+                        app:tint="#00C853" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/HelpItemTitle"
+                            android:text="Unlocked"
+                            android:textColor="#00C853" />
+
+                        <TextView
+                            style="@style/HelpItemSubtitle"
+                            android:text="Camera access is enabled." />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- ===================== Required Permissions ===================== -->
+            <LinearLayout style="@style/HelpCard">
+
+                <LinearLayout style="@style/HelpStepRow">
+
+                    <ImageView
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/bg_help_icon_tile"
+                        android:padding="10dp"
+                        android:src="@drawable/ic_device_admin_red"
+                        android:contentDescription="Required Permissions"
+                        app:tint="#FFFFFF" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:text="Required Permissions"
+                        android:textColor="#FFFFFF"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <!-- Device Admin -->
+                <LinearLayout
+                    style="@style/HelpStepRow"
+                    android:layout_marginTop="16dp">
+
+                    <ImageView
+                        style="@style/HelpPermIcon"
+                        android:src="@drawable/ic_top_permission"
+                        android:contentDescription="Device Administrator" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/HelpItemTitle"
+                            android:text="Device Administrator" />
+
+                        <TextView
+                            style="@style/HelpItemSubtitle"
+                            android:text="Required to lock and unlock the camera hardware." />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Camera -->
+                <LinearLayout
+                    style="@style/HelpStepRow"
+                    android:layout_marginTop="14dp">
+
+                    <!-- Glyph-only icon: wrap in the matching circular tile so it
+                         visually aligns with the compound icons used above / below. -->
+                    <ImageView
+                        style="@style/HelpPermIcon"
+                        android:background="@drawable/bg_help_perm_tile"
+                        android:padding="7dp"
+                        android:src="@drawable/ic_camera_on"
+                        android:contentDescription="Camera"
+                        app:tint="@color/btn_blue" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/HelpItemTitle"
+                            android:text="Camera" />
+
+                        <TextView
+                            style="@style/HelpItemSubtitle"
+                            android:text="Required for QR code scanning." />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Internet -->
+                <LinearLayout
+                    style="@style/HelpStepRow"
+                    android:layout_marginTop="14dp">
+
+                    <ImageView
+                        style="@style/HelpPermIcon"
+                        android:src="@drawable/ic_permi_restore"
+                        android:contentDescription="Internet" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/HelpItemTitle"
+                            android:text="Internet" />
+
+                        <TextView
+                            style="@style/HelpItemSubtitle"
+                            android:text="Required for secure backend communication." />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- ===================== Troubleshooting ===================== -->
+            <LinearLayout style="@style/HelpCard">
+
+                <LinearLayout style="@style/HelpStepRow">
+
+                    <ImageView
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/bg_help_icon_tile"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_permi_restore"
+                        android:contentDescription="Troubleshooting"
+                        app:tint="#8A92A6" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:text="Troubleshooting"
+                        android:textColor="#FFFFFF"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    style="@style/HelpBullet"
+                    android:layout_marginTop="14dp"
+                    android:text="•  QR code not scanning? Ensure proper lighting and focus." />
+
+                <TextView
+                    style="@style/HelpBullet"
+                    android:text="•  Camera not locking? Check Device Admin permission." />
+
+                <TextView
+                    style="@style/HelpBullet"
+                    android:text="•  App not responding? Restart the application." />
+
+                <TextView
+                    style="@style/HelpBullet"
+                    android:text="•  Backend connection issues? Check your network connectivity." />
+            </LinearLayout>
+
+            <!-- ===================== Need Help? ===================== -->
+            <LinearLayout style="@style/HelpCard">
+
+                <LinearLayout style="@style/HelpStepRow">
+
+                    <ImageView
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/bg_help_icon_tile"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_help_two"
+                        android:contentDescription="Need help" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:text="Need Help?"
+                        android:textColor="#FFFFFF"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="24dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="20dp"
-                        android:gravity="center_vertical">
-
-                        <ImageView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
-                            android:layout_marginEnd="12dp"
-                            android:src="@drawable/ic_shield_gray" />
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:fontFamily="sans-serif-medium"
-                            android:text="Status Indicators"
-                            android:textColor="#FFFFFF"
-                            android:textSize="22sp"
-                            android:textStyle="bold" />
-
-                    </LinearLayout>
-
-                    <!-- Locked Status -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="16dp"
-                        android:background="#1AF44336"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:padding="16dp">
-
-                        <View
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:layout_gravity="center_vertical"
-                            android:background="#F44336" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="16dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="sans-serif-medium"
-                                android:text="Locked"
-                                android:textColor="#F44336"
-                                android:textSize="18sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:text="Camera access disabled"
-                                android:textColor="#E0E0E0"
-                                android:textSize="15sp" />
-
-                        </LinearLayout>
-
-                    </LinearLayout>
-
-                    <!-- Unlocked Status -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:background="#1A4CAF50"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal"
-                        android:padding="16dp">
-
-                        <View
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:layout_gravity="center_vertical"
-                            android:background="#4CAF50" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="16dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:fontFamily="sans-serif-medium"
-                                android:text="Unlocked"
-                                android:textColor="#4CAF50"
-                                android:textSize="18sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="4dp"
-                                android:text="Camera access enabled"
-                                android:textColor="#E0E0E0"
-                                android:textSize="15sp" />
-
-                        </LinearLayout>
-
-                    </LinearLayout>
-
-                </LinearLayout>
-
-            </androidx.cardview.widget.CardView>
-
-            <!-- Permissions Required -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackground"
-                app:cardBackgroundColor="@color/parent_bg"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="8dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="24dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="20dp"
-                        android:gravity="center_vertical">
-
-                        <ImageView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
-                            android:layout_marginEnd="12dp"
-                            android:src="@drawable/ic_device_admin_red" />
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:fontFamily="sans-serif-medium"
-                            android:text="Required Permissions"
-                            android:textColor="#FFFFFF"
-                            android:textSize="22sp"
-                            android:textStyle="bold" />
-
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:background="#1A1976D2"
-                        android:orientation="vertical"
-                        android:padding="16dp">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="12dp"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
-
-                            <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:layout_marginEnd="12dp"
-                                android:src="@drawable/ic_top_permission" />
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:fontFamily="sans-serif-medium"
-                                android:text="Device Administrator"
-                                android:textColor="#1976D2"
-                                android:textSize="16sp"
-                                android:textStyle="bold" />
-
-                        </LinearLayout>
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="36dp"
-                            android:layout_marginBottom="12dp"
-                            android:text="Required to lock/unlock camera hardware"
-                            android:textColor="#E0E0E0"
-                            android:textSize="14sp" />
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="12dp"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
-
-                            <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:layout_marginEnd="12dp"
-                                android:tint="#1976D2"
-                                android:src="@drawable/ic_camera_on" />
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:fontFamily="sans-serif-medium"
-                                android:text="Camera"
-                                android:textColor="#1976D2"
-                                android:textSize="16sp"
-                                android:textStyle="bold" />
-
-                        </LinearLayout>
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="36dp"
-                            android:layout_marginBottom="12dp"
-                            android:text="Required for QR code scanning"
-                            android:textColor="#E0E0E0"
-                            android:textSize="14sp" />
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
-
-                            <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:layout_marginEnd="12dp"
-                                android:src="@drawable/ic_permi_restore" />
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:fontFamily="sans-serif-medium"
-                                android:text="Internet"
-                                android:textColor="#1976D2"
-                                android:textSize="16sp"
-                                android:textStyle="bold" />
-
-                        </LinearLayout>
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="36dp"
-                            android:text="Required for backend communication"
-                            android:textColor="#E0E0E0"
-                            android:textSize="14sp" />
-
-                    </LinearLayout>
-
-                </LinearLayout>
-
-            </androidx.cardview.widget.CardView>
-
-            <!-- Troubleshooting -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackground"
-                app:cardBackgroundColor="@color/parent_bg"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="8dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="24dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="20dp"
-                        android:gravity="center_vertical">
-
-                        <ImageView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
-                            android:layout_marginEnd="12dp"
-                            android:src="@drawable/ic_permi_restore" />
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:fontFamily="sans-serif-medium"
-                            android:text="Troubleshooting"
-                            android:textColor="#FFFFFF"
-                            android:textSize="22sp"
-                            android:textStyle="bold" />
-
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:background="#1AFF5722"
-                        android:orientation="vertical"
-                        android:padding="16dp">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="12dp"
-                            android:gravity="top"
-                            android:orientation="horizontal">
-
-                            <TextView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:layout_marginEnd="12dp"
-                                android:gravity="center"
-                                android:text="•"
-                                android:textColor="#FF5722"
-                                android:textSize="16sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:lineSpacingExtra="4dp"
-                                android:text="QR code not scanning? Ensure proper lighting and focus"
-                                android:textColor="#E0E0E0"
-                                android:textSize="15sp" />
-
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="12dp"
-                            android:gravity="top"
-                            android:orientation="horizontal">
-
-                            <TextView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:layout_marginEnd="12dp"
-                                android:gravity="center"
-                                android:text="•"
-                                android:textColor="#FF5722"
-                                android:textSize="16sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:lineSpacingExtra="4dp"
-                                android:text="Camera not locking? Check Device Admin permissions"
-                                android:textColor="#E0E0E0"
-                                android:textSize="15sp" />
-
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="12dp"
-                            android:gravity="top"
-                            android:orientation="horizontal">
-
-                            <TextView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:layout_marginEnd="12dp"
-                                android:gravity="center"
-                                android:text="•"
-                                android:textColor="#FF5722"
-                                android:textSize="16sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:lineSpacingExtra="4dp"
-                                android:text="App not responding? Restart the app"
-                                android:textColor="#E0E0E0"
-                                android:textSize="15sp" />
-
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="top"
-                            android:orientation="horizontal">
-
-                            <TextView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:layout_marginEnd="12dp"
-                                android:gravity="center"
-                                android:text="•"
-                                android:textColor="#FF5722"
-                                android:textSize="16sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:lineSpacingExtra="4dp"
-                                android:text="Backend connection issues? Check network connectivity"
-                                android:textColor="#E0E0E0"
-                                android:textSize="15sp" />
-
-                        </LinearLayout>
-
-                    </LinearLayout>
-
-                </LinearLayout>
-
-            </androidx.cardview.widget.CardView>
-
-            <!-- Contact Support -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackground"
-                app:cardBackgroundColor="@color/parent_bg"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="8dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="24dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="20dp"
-                        android:gravity="center_vertical">
-
-                        <ImageView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
-                            android:layout_marginEnd="12dp"
-                            android:src="@drawable/ic_help_two" />
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:fontFamily="sans-serif-medium"
-                            android:text="Need Help?"
-                            android:textColor="#FFFFFF"
-                            android:textSize="22sp"
-                            android:textStyle="bold" />
-
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:background="#1A9C27B0"
-                        android:orientation="vertical"
-                        android:padding="16dp">
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="12dp"
-                            android:lineSpacingExtra="4dp"
-                            android:text="Contact your facility administrator for assistance with:"
-                            android:textColor="#E0E0E0"
-                            android:textSize="16sp" />
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="8dp"
-                            android:gravity="top"
-                            android:orientation="horizontal">
-
-                            <TextView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:layout_marginEnd="12dp"
-                                android:gravity="center"
-                                android:text="•"
-                                android:textColor="#9C27B0"
-                                android:textSize="16sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:lineSpacingExtra="4dp"
-                                android:text="QR code access"
-                                android:textColor="#E0E0E0"
-                                android:textSize="15sp" />
-
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="8dp"
-                            android:gravity="top"
-                            android:orientation="horizontal">
-
-                            <TextView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:layout_marginEnd="12dp"
-                                android:gravity="center"
-                                android:text="•"
-                                android:textColor="#9C27B0"
-                                android:textSize="16sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:lineSpacingExtra="4dp"
-                                android:text="Permission issues"
-                                android:textColor="#E0E0E0"
-                                android:textSize="15sp" />
-
-                        </LinearLayout>
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="top"
-                            android:orientation="horizontal">
-
-                            <TextView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:layout_marginEnd="12dp"
-                                android:gravity="center"
-                                android:text="•"
-                                android:textColor="#9C27B0"
-                                android:textSize="16sp"
-                                android:textStyle="bold" />
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:lineSpacingExtra="4dp"
-                                android:text="Account problems"
-                                android:textColor="#E0E0E0"
-                                android:textSize="15sp" />
-
-                        </LinearLayout>
-
-                    </LinearLayout>
-
-                </LinearLayout>
-
-            </androidx.cardview.widget.CardView>
+                    android:layout_marginTop="14dp"
+                    android:lineSpacingExtra="4dp"
+                    android:text="Contact your facility administrator for assistance with:"
+                    android:textColor="#8A92A6"
+                    android:textSize="14sp" />
+
+                <TextView
+                    style="@style/HelpBullet"
+                    android:layout_marginTop="10dp"
+                    android:text="•  QR code access" />
+
+                <TextView
+                    style="@style/HelpBullet"
+                    android:text="•  Permission issues" />
+
+                <TextView
+                    style="@style/HelpBullet"
+                    android:text="•  Account problems" />
+            </LinearLayout>
 
         </LinearLayout>
 
-    </ScrollView>
+    </androidx.core.widget.NestedScrollView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
