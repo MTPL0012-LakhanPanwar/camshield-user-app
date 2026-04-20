@@ -1,11 +1,15 @@
 package com.camshield.admin.ui
 
+import android.Manifest
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -66,6 +70,7 @@ import com.sierra.admin.modal.ApiResult
 import com.sierra.admin.modal.FacilityData
 import com.sierra.admin.modal.QRData
 import com.sierra.admin.modal.QRPair
+import com.sierra.admin.utils.DownloadNotificationManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -87,6 +92,8 @@ private val QrStatusGreen = Color(0xFF4CAF50)
 
 enum class QRType { ENTRY, EXIT }
 
+private const val TAG = "QRCodeDialog"
+
 @Composable
 fun QRCodeDialog(
     facility: FacilityData,
@@ -99,10 +106,21 @@ fun QRCodeDialog(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var pendingDownload by remember { mutableStateOf<PendingDownload?>(null) }
+    val notificationManager = remember { DownloadNotificationManager(context) }
+    
     val performSave: (Bitmap, String) -> Unit = { bitmap, filename ->
         scope.launch {
-            val success = withContext(Dispatchers.IO) { saveQRToDownloads(context, bitmap, filename) }
-            showSnackbar(if (success) "\"$filename.png\" saved to Downloads" else "Failed to save QR code")
+            notificationManager.showDownloadStartedNotification(filename)
+            val success = withContext(Dispatchers.IO) { 
+                saveQRToDownloads(context, bitmap, filename, notificationManager) 
+            }
+            if (success) {
+                notificationManager.showDownloadSuccessNotification(filename)
+                showSnackbar("\"$filename.png\" saved to Downloads")
+            } else {
+                notificationManager.showDownloadErrorNotification(filename)
+                showSnackbar("Failed to save QR code")
+            }
             onDismiss()
         }
     }
@@ -184,7 +202,9 @@ fun QRCodeDialog(
                                     fontSize = 14.sp
                                 )
                                 Button(
-                                    onClick = { viewModel.loadQRCodes(facility.id) },
+                                    onClick = { 
+                                        viewModel.loadQRCodes(facility.id)
+                                    },
                                     colors = ButtonDefaults.buttonColors(containerColor = QrAccentBlue)
                                 ) { Text("Retry") }
                             }
@@ -299,6 +319,17 @@ private fun QRContent(
     onDownloadConflict: (PendingDownload) -> Unit,
     onSave: (Bitmap, String) -> Unit
 ) {
+    // Permission launcher for notifications (Android 13+)
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // Permission granted - proceed silently without snackbar
+        } else {
+            showSnackbar("Permission denied. Notifications won't be shown.")
+        }
+    }
+    
     val requestedQrs = when (focus) {
         QRType.ENTRY -> listOfNotNull(qrPair.entry)
         QRType.EXIT -> listOfNotNull(qrPair.exit)
@@ -334,6 +365,11 @@ private fun QRContent(
     }
 
     fun handleDownload(bitmap: Bitmap, qrData: QRData, isEntry: Boolean, force: Boolean = false) {
+        // Request permission if needed (Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+        
         val validDate = qrData.generatedForDate ?: qrData.validUntil ?: qrData.validFrom ?: qrData.qrCodeId ?: "qr"
         val dateStr = validDate.take(10).ifBlank { "qr" }
         val baseName = if (isEntry) "Entry_Code_$dateStr" else "Exit_Code_$dateStr"
@@ -456,7 +492,9 @@ private fun QRCodeSection(
         }
         if (bitmap != null) {
             OutlinedButton(
-                onClick = { onDownload(bitmap) },
+                onClick = { 
+                    onDownload(bitmap)
+                },
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = QrAccentBlue),
                 border = androidx.compose.foundation.BorderStroke(1.dp, QrAccentBlue)
@@ -489,7 +527,7 @@ private fun generateQRBitmap(content: String, size: Int = 512): Bitmap? {
     }
 }
 
-private fun saveQRToDownloads(context: Context, bitmap: Bitmap, filename: String): Boolean {
+private fun saveQRToDownloads(context: Context, bitmap: Bitmap, filename: String, notificationManager: DownloadNotificationManager): Boolean {
     return try {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val contentValues = ContentValues().apply {
@@ -502,7 +540,10 @@ private fun saveQRToDownloads(context: Context, bitmap: Bitmap, filename: String
                 contentValues
             ) ?: return false
             context.contentResolver.openOutputStream(uri)?.use { out ->
+                notificationManager.updateDownloadProgress(filename, 50)
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                notificationManager.updateDownloadProgress(filename, 100)
+                Log.d(TAG, "Successfully saved QR code to Downloads: $filename.png")
             }
             true
         } else {
@@ -511,11 +552,14 @@ private fun saveQRToDownloads(context: Context, bitmap: Bitmap, filename: String
             dir.mkdirs()
             val file = java.io.File(dir, "$filename.png")
             java.io.FileOutputStream(file).use { out ->
+                notificationManager.updateDownloadProgress(filename, 50)
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                notificationManager.updateDownloadProgress(filename, 100)
             }
             true
         }
     } catch (e: Exception) {
+        notificationManager.showDownloadErrorNotification(filename, "Error: ${e.message}")
         false
     }
 }
