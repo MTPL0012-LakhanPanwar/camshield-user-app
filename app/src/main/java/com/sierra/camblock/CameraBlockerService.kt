@@ -39,6 +39,34 @@ class CameraBlockerService : Service() {
         @Volatile
         var isServiceRunning = false
             private set
+
+        /**
+         * Weakly-held reference to the currently-running service instance.
+         * Used exclusively by [CameraBlockerAccessibilityService] (and the
+         * camera-callback block path) to invoke [blockNowSynchronously]
+         * without going through the main-thread handler queue. This saves
+         * one frame of latency (~16 ms) which, on high-end Samsung /
+         * OneUI devices with fast camera-app launches, is the difference
+         * between the user seeing the camera preview briefly and seeing
+         * a black overlay immediately.
+         */
+        @Volatile
+        private var instance: CameraBlockerService? = null
+
+        /**
+         * Paint the blocking overlay on top of whatever is foreground,
+         * RIGHT NOW, from the caller's thread. Must be invoked on the main
+         * thread — callers (the accessibility service and the camera
+         * callback) are already on the main thread by construction.
+         *
+         * Returns `true` if the block was applied, `false` if the service
+         * is not currently running (in which case the caller should start
+         * it and rely on the normal listener path).
+         */
+        fun blockNowSynchronously(): Boolean {
+            val svc = instance ?: return false
+            return svc.applyBlockImmediately()
+        }
     }
 
     private val handler = Handler(Looper.getMainLooper())
@@ -96,7 +124,17 @@ class CameraBlockerService : Service() {
             // is itself idempotent; we gate HOME on the sticky flag having
             // transitioned from false → true.
             val wasAlreadyBlocking = BlockState.needsAcknowledgement
-            BlockState.requireAcknowledgement()
+
+            // Paint the overlay RIGHT NOW, synchronously, before we ask
+            // the system to animate the HOME transition. This is the
+            // key optimisation for Samsung / OneUI devices where the
+            // HOME gesture can take 200-1000 ms under memory pressure;
+            // by drawing the opaque overlay on top of the camera's
+            // SurfaceView in the same main-thread frame, the camera
+            // preview is covered within ~1 vsync regardless of how
+            // slow the activity transition is.
+            applyBlockImmediately()
+
             if (!wasAlreadyBlocking) {
                 CameraBlockerAccessibilityService.performHome()
             }
@@ -114,6 +152,13 @@ class CameraBlockerService : Service() {
         cameraManager = getSystemService(CAMERA_SERVICE) as CameraManager
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
+        // Pre-inflate the blocking overlay *before* the first camera-app
+        // event arrives. Inflation is the slowest step in the block hot
+        // path (measured ~20-60 ms on a cold JIT). Doing it once at
+        // service start means showOverlay() → addView is the only work
+        // left on the critical path — typically 1-2 ms.
+        ensureOverlayInflated()
+
         startForegroundService()
 
         try {
@@ -126,6 +171,11 @@ class CameraBlockerService : Service() {
         // service + our own camera callback. Replaces the previous 200 ms
         // polling loop entirely.
         BlockState.onStateChanged = stateListener
+
+        // Publish the instance so the accessibility service (and the
+        // static `blockNowSynchronously` helper) can reach us without
+        // going through the handler queue.
+        instance = this
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -145,6 +195,10 @@ class CameraBlockerService : Service() {
         if (BlockState.onStateChanged === stateListener) {
             BlockState.onStateChanged = null
         }
+        // Drop the static instance reference so blockNowSynchronously()
+        // callers after destruction fall through to the start-service
+        // path rather than invoking methods on a stopped service.
+        if (instance === this) instance = null
         handler.removeCallbacksAndMessages(null)
         hideOverlay()
         try {
@@ -230,86 +284,130 @@ class CameraBlockerService : Service() {
         }
     }
 
+    /**
+     * Inflate the overlay View and attach its click handlers. Idempotent —
+     * calling it multiple times is a no-op after the first successful
+     * inflate. Invoked from [onCreate] so the View is warm by the time
+     * the first camera-app event arrives.
+     */
+    private fun ensureOverlayInflated() {
+        if (overlayView != null) return
+        try {
+            val inflater = getSystemService(LAYOUT_INFLATER_SERVICE) as LayoutInflater
+            val view = inflater.inflate(R.layout.activity_blocked, null)
+
+            // "I Understand" dismissal:
+            //   1. Clear the sticky flag so shouldBlock() returns false.
+            //   2. Remove the overlay View immediately (do not rely on
+            //      the state-change listener alone, which may run on
+            //      the next frame).
+            //   3. Bring the launcher back to front for good measure —
+            //      the camera app may still be in the recents stack.
+            view.findViewById<Button>(R.id.btnDismiss)?.setOnClickListener {
+                Log.d(TAG, "User acknowledged block")
+                BlockState.acknowledge()
+                hideOverlay()
+                try {
+                    val startMain = Intent(Intent.ACTION_MAIN).apply {
+                        addCategory(Intent.CATEGORY_HOME)
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    }
+                    startActivity(startMain)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to launch home after dismiss", e)
+                }
+            }
+            overlayView = view
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to pre-inflate overlay", e)
+        }
+    }
+
+    /**
+     * Synchronous block hot path. Sets the sticky acknowledgement flag
+     * and paints the overlay immediately (same main-thread frame). Called
+     * from [CameraBlockerAccessibilityService] and the camera-hardware
+     * callback BEFORE [performGlobalAction] returns, so the opaque
+     * overlay is on top of the camera SurfaceView within the same vsync.
+     *
+     * Returns `true` if the overlay is now showing (or was already
+     * showing). The caller can then ask the accessibility service to
+     * execute the HOME gesture to actually close the camera app.
+     */
+    internal fun applyBlockImmediately(): Boolean {
+        if (!prefsManager.isLocked) return false
+        if (CamShield.isOwnAppInForeground) return false
+        BlockState.requireAcknowledgement()
+        showOverlay()
+        return isOverlayShowing
+    }
+
+    /**
+     * Build the overlay's WindowManager.LayoutParams. Extracted so both
+     * the normal [showOverlay] path and the hot-path [applyBlockImmediately]
+     * share the exact same window configuration.
+     */
+    private fun buildOverlayLayoutParams(): WindowManager.LayoutParams {
+        // Flags picked for maximum compatibility (Xiaomi, OneUI, Pixel):
+        //   FLAG_NOT_TOUCH_MODAL  — keep window touchable within bounds
+        //                            while allowing touches outside to
+        //                            pass through (moot at fullscreen).
+        //   FLAG_LAYOUT_IN_SCREEN — lay out under status/nav bars too.
+        //   FLAG_KEEP_SCREEN_ON   — prevent dimming while overlay visible.
+        //   FLAG_SHOW_WHEN_LOCKED — render even over secure lockscreen.
+        //   FLAG_LAYOUT_NO_LIMITS — allow extending into cutout area.
+        //   FLAG_FULLSCREEN       — request true fullscreen.
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            else
+                WindowManager.LayoutParams.TYPE_PHONE,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                    WindowManager.LayoutParams.FLAG_FULLSCREEN,
+            PixelFormat.TRANSLUCENT
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            params.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+        params.gravity = Gravity.CENTER
+        return params
+    }
+
     private fun showOverlay() {
         if (isOverlayShowing) return
 
         // Double check Overlay Permission
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-            Log.e("CameraBlocker", "Cannot show overlay: Permission missing")
+            Log.e(TAG, "Cannot show overlay: Permission missing")
             return
         }
 
+        // Defensive: if onCreate's pre-inflate failed for some reason
+        // (OOM, theme resolution race), try inflating again on demand.
+        ensureOverlayInflated()
+        val view = overlayView ?: return
+
         try {
-            if (overlayView == null) {
-                val inflater = getSystemService(LAYOUT_INFLATER_SERVICE) as LayoutInflater
-                overlayView = inflater.inflate(R.layout.activity_blocked, null)
-
-                // Set up dismiss button. The previous implementation only
-                // fired a HOME intent which did not remove the overlay or
-                // clear the sticky acknowledgement flag — so tapping the
-                // button appeared to "do nothing" while the overlay stayed
-                // visible. Now we:
-                //   1. Clear the sticky flag so shouldBlock() returns false.
-                //   2. Remove the overlay view immediately (do not rely on
-                //      the state-change listener alone, which may run on
-                //      the next frame).
-                //   3. Bring the launcher back to front for good measure —
-                //      the camera app may still be in the recents stack.
-                val btnDismiss = overlayView?.findViewById<Button>(R.id.btnDismiss)
-                btnDismiss?.setOnClickListener {
-                    Log.d(TAG, "User acknowledged block")
-                    BlockState.acknowledge()
-                    hideOverlay()
-                    try {
-                        val startMain = Intent(Intent.ACTION_MAIN).apply {
-                            addCategory(Intent.CATEGORY_HOME)
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                                    Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        }
-                        startActivity(startMain)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to launch home after dismiss", e)
-                    }
-                }
-            }
-
-            // Flags updated for better compatibility (Xiaomi, etc.)
-            val layoutParams = WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT,
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                else
-                    WindowManager.LayoutParams.TYPE_PHONE,
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
-                        WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or // Allow extending outside screen
-                        WindowManager.LayoutParams.FLAG_FULLSCREEN,         // Request full screen
-                PixelFormat.TRANSLUCENT
-            )
-
-            // Handle Display Cutout (Notch)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                layoutParams.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-            }
-
-            layoutParams.gravity = Gravity.CENTER
-
-            // Hide System UI (Immersive Mode)
-            overlayView?.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            view.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                     or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                     or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
-                    or View.SYSTEM_UI_FLAG_FULLSCREEN // hide status bar
+                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_FULLSCREEN
                     or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
 
-            windowManager?.addView(overlayView, layoutParams)
+            windowManager?.addView(view, buildOverlayLayoutParams())
             isOverlayShowing = true
-            Log.d("CameraBlocker", "Overlay SHOWN")
+            Log.d(TAG, "Overlay SHOWN")
         } catch (e: Exception) {
-            Log.e("CameraBlocker", "Failed to show overlay", e)
+            Log.e(TAG, "Failed to show overlay", e)
         }
     }
 

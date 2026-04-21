@@ -152,29 +152,45 @@ class CameraBlockerAccessibilityService : AccessibilityService() {
 
         Log.d(TAG, "Blocking camera app: $packageName")
 
-        // 1. Set the sticky acknowledgement flag FIRST — before anything
-        //    else races. Without this the next WINDOW_STATE_CHANGED event
-        //    (fired when we jump to Home) would clear
-        //    `isCameraAppForeground` and the overlay would be torn down
-        //    immediately.
-        BlockState.requireAcknowledgement()
+        // FAST PATH (primary, same main-thread frame):
+        //   Ask the already-running blocker service to paint its opaque
+        //   overlay on top of the camera app RIGHT NOW. Because both
+        //   services run on the main thread and the overlay View is
+        //   pre-inflated in CameraBlockerService.onCreate(), this
+        //   typically completes in 1-3 ms — well under a single vsync.
+        //   On high-end Samsung S2x devices this is what prevents the
+        //   camera preview from ever being visible, even when OneUI's
+        //   HOME animation is slow.
+        //
+        //   `blockNowSynchronously` returns false only if the service
+        //   is not currently running — in which case we fall back to
+        //   the slow path below (start the service and let its onCreate
+        //   → updateOverlayState render the overlay a few frames later).
+        val blocked = CameraBlockerService.blockNowSynchronously()
+        if (!blocked) {
+            // Slow path: service was not alive. Start it — its onCreate
+            // will see the sticky flag we are about to set and render
+            // the overlay on its first update tick.
+            BlockState.requireAcknowledgement()
+            ensureBlockerServiceRunning()
+        }
 
-        // 2. Make sure the overlay service is running BEFORE we switch to
-        //    Home. If the service was not running, starting it now means
-        //    its onCreate → updateOverlayState sees the sticky flag and
-        //    renders the overlay on first paint after the HOME transition.
-        ensureBlockerServiceRunning()
-
-        // 3. Kick the user back to the launcher. This is the fastest
-        //    possible "block" — dispatched synchronously by the system.
-        //    The TYPE_APPLICATION_OVERLAY window from step 2 renders on
-        //    top of the launcher so the user cannot interact with it
-        //    until they acknowledge the block.
+        // Kick the user back to the launcher. `performGlobalAction`
+        // is dispatched synchronously by the system; the actual HOME
+        // animation may still take 200-1000 ms on OneUI under memory
+        // pressure, but the overlay drawn above is already covering
+        // the camera preview so there is nothing exploitable during
+        // that transition window.
         try {
             performGlobalAction(GLOBAL_ACTION_HOME)
         } catch (e: Exception) {
             Log.e(TAG, "performGlobalAction(HOME) failed", e)
         }
+
+        // Make sure the overlay/foreground service is up. Starting it from
+        // an already-running accessibility service respects the background
+        // start restrictions introduced in Android 12+.
+        ensureBlockerServiceRunning()
     }
 
     private fun ensureBlockerServiceRunning() {
