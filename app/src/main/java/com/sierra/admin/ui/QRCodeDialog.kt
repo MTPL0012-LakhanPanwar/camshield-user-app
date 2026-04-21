@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -63,9 +64,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.camshield.admin.viewmodel.FacilityViewModel
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.EncodeHintType
-import com.google.zxing.MultiFormatWriter
+import qrcode.QRCode
+import qrcode.color.Colors
 import com.sierra.admin.modal.ApiResult
 import com.sierra.admin.modal.FacilityData
 import com.sierra.admin.modal.QRData
@@ -81,7 +81,6 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import android.graphics.Color as AndroidColor
 
 private val QrBgDark = Color(0xFF0B101F)
 private val QrCardBg = Color(0xFF161C2C)
@@ -509,18 +508,18 @@ private fun QRCodeSection(
 
 private fun generateQRBitmap(content: String, size: Int = 512): Bitmap? {
     return try {
-        val hints = hashMapOf<EncodeHintType, Any>(EncodeHintType.MARGIN to 1)
-        val bitMatrix = MultiFormatWriter().encode(content, BarcodeFormat.QR_CODE, size, size, hints)
-        Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also { bmp ->
-            for (x in 0 until size) {
-                for (y in 0 until size) {
-                    bmp.setPixel(
-                        x,
-                        y,
-                        if (bitMatrix[x, y]) AndroidColor.BLACK else AndroidColor.WHITE
-                    )
-                }
-            }
+        val pngBytes = QRCode.ofSquares()
+            .withColor(Colors.BLACK)
+            .withBackgroundColor(Colors.WHITE)
+            .withSize(16)
+            .build(content)
+            .render()
+            .getBytes()
+        val raw = BitmapFactory.decodeByteArray(pngBytes, 0, pngBytes.size) ?: return null
+        if (raw.width == size && raw.height == size) {
+            raw
+        } else {
+            Bitmap.createScaledBitmap(raw, size, size, false)
         }
     } catch (e: Exception) {
         null
