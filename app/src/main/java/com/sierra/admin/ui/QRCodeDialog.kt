@@ -66,6 +66,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.camshield.admin.viewmodel.FacilityViewModel
 import qrcode.QRCode
 import qrcode.color.Colors
+import qrcode.raw.ErrorCorrectionLevel
 import com.sierra.admin.modal.ApiResult
 import com.sierra.admin.modal.FacilityData
 import com.sierra.admin.modal.QRData
@@ -508,19 +509,21 @@ private fun QRCodeSection(
 
 private fun generateQRBitmap(content: String, size: Int = 512): Bitmap? {
     return try {
+        // LOW error correction to match ZXing's default data density.
+        // Use the QR-spec standard 4-module quiet zone so the rounded-corner
+        // clip around the QR preview doesn't crop into the finder patterns.
+        // No post-scaling: modules stay pixel-aligned; Compose scales cleanly.
+        val cellSize = 20
         val pngBytes = QRCode.ofSquares()
             .withColor(Colors.BLACK)
             .withBackgroundColor(Colors.WHITE)
-            .withSize(16)
+            .withErrorCorrectionLevel(ErrorCorrectionLevel.LOW)
+            .withInnerSpacing(0)
+            .withSize(cellSize)
+            .withMargin(cellSize * 4) // 4-module quiet zone (QR spec standard)
             .build(content)
-            .render()
-            .getBytes()
-        val raw = BitmapFactory.decodeByteArray(pngBytes, 0, pngBytes.size) ?: return null
-        if (raw.width == size && raw.height == size) {
-            raw
-        } else {
-            Bitmap.createScaledBitmap(raw, size, size, false)
-        }
+            .renderToBytes()
+        BitmapFactory.decodeByteArray(pngBytes, 0, pngBytes.size)
     } catch (e: Exception) {
         null
     }
