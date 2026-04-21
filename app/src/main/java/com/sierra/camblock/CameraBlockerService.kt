@@ -74,12 +74,20 @@ class CameraBlockerService : Service() {
             super.onCameraUnavailable(cameraId)
             BlockState.isCameraInUse = true
             Log.d(TAG, "Camera unavailable (in use) cameraId=$cameraId")
-            // Camera hardware was just reserved. If we are locked, mark the
-            // session as requiring acknowledgement and ask the A11y service
-            // to bounce the user home. We set the sticky flag here too
-            // (mirroring the accessibility-path behaviour) so the overlay
-            // survives the foreground transition back to the launcher.
+
+            // Only block when:
+            //   (a) the user is currently locked inside a facility, AND
+            //   (b) the app holding the camera is NOT us.
             //
+            // (b) is critical because our own ScanActivity opens the
+            // camera to read the exit QR code — if we were to kick the
+            // user back to Home here, they could never scan out.
+            if (!prefsManager.isLocked) return
+            if (CamShield.isOwnAppInForeground) {
+                Log.d(TAG, "Own app is foreground — not blocking our own camera use")
+                return
+            }
+
             // Dedupe: Android frequently fires onCameraUnavailable for both
             // the front and back camera IDs in rapid succession during a
             // single app launch. Only the FIRST call needs to perform HOME
@@ -87,12 +95,10 @@ class CameraBlockerService : Service() {
             // transition and contribute to flicker. `requireAcknowledgement`
             // is itself idempotent; we gate HOME on the sticky flag having
             // transitioned from false → true.
-            if (prefsManager.isLocked) {
-                val wasAlreadyBlocking = BlockState.needsAcknowledgement
-                BlockState.requireAcknowledgement()
-                if (!wasAlreadyBlocking) {
-                    CameraBlockerAccessibilityService.performHome()
-                }
+            val wasAlreadyBlocking = BlockState.needsAcknowledgement
+            BlockState.requireAcknowledgement()
+            if (!wasAlreadyBlocking) {
+                CameraBlockerAccessibilityService.performHome()
             }
         }
 
@@ -206,9 +212,13 @@ class CameraBlockerService : Service() {
             return
         }
 
-        val currentPackage = BlockState.foregroundPackage
-        if (currentPackage == packageName) {
-            // Our own app is foreground — never self-block.
+        // Never cover our own UI. The Accessibility service already filters
+        // out events from our own package, so `BlockState.foregroundPackage`
+        // cannot reliably be used to detect our own foreground state; we use
+        // the [CamShield.isOwnAppInForeground] counter instead. This also
+        // ensures that if a stale sticky-acknowledgement flag somehow
+        // survives, it will not obscure e.g. the exit-scan screen.
+        if (CamShield.isOwnAppInForeground) {
             hideOverlay()
             return
         }
