@@ -1,3 +1,8 @@
+<!--
+    Standard QR scanner viewfinder: four rounded corner brackets.
+    The stroke is drawn inside a 280x280 viewport with a 4dp half-stroke
+    inset so the corners render crisply without clipping.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="280dp"
     android:height="280dp"
@@ -6,12 +11,14 @@
 
     <path
         android:strokeColor="#1E61EB"
-        android:strokeWidth="8"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
         android:fillColor="@android:color/transparent"
         android:pathData="
-            M0,60 L0,0 L60,0
-            M220,0 L280,0 L280,60
-            M280,220 L280,280 L220,280
-            M60,280 L0,280 L0,220" />
+            M4,64 L4,20 Q4,4 20,4 L64,4
+            M216,4 L260,4 Q276,4 276,20 L276,64
+            M276,216 L276,260 Q276,276 260,276 L216,276
+            M64,276 L20,276 Q4,276 4,260 L4,216" />
 
 </vector>

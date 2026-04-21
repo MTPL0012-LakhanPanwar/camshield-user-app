@@ -57,15 +57,15 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/tvTitle" />
 
-             <androidx.constraintlayout.widget.ConstraintLayout
-                 android:id="@+id/cvUsageStats"
-                 android:layout_width="match_parent"
-                 android:layout_height="wrap_content"
-                 android:layout_marginHorizontal="26dp"
-                 android:layout_marginTop="16dp"
-                 android:background="@drawable/bg_card_dark"
-                 android:padding="16dp"
-                 app:layout_constraintTop_toBottomOf="@id/tvSubtitle">
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/cvUsageStats"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="26dp"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/bg_card_dark"
+                android:padding="16dp"
+                app:layout_constraintTop_toBottomOf="@id/tvSubtitle">
 
                 <ImageView
                     android:id="@+id/imgUsageStat"
@@ -202,30 +202,12 @@
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnContinue"
+        style="@style/PrimaryCtaButton"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
         android:layout_marginHorizontal="14dp"
-        android:layout_marginBottom="80dp"
+        android:layout_marginBottom="18dp"
         android:backgroundTint="@color/btn_disabled"
         android:text="Continue"
-        android:textAllCaps="false"
-        android:textColor="#FFFFFF"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:cornerRadius="24dp"
         app:layout_constraintBottom_toBottomOf="parent" />
-
-    <TextView
-        android:id="@+id/tvLoginLink"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="18dp"
-        android:text="Already have an account? Login"
-        android:textColor="#1E6BFF"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,24 +1,21 @@
 package com.sierra.camblock.activity
 
-import android.Manifest
 import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.sierra.camblock.R
 import com.sierra.camblock.databinding.ActivitySplashBinding
 import com.sierra.camblock.manager.DeviceAdminManager
+import com.sierra.camblock.utils.applyDarkSystemBars
 
 class SplashActivity : AppCompatActivity() {
     private lateinit var binding : ActivitySplashBinding
@@ -29,6 +26,7 @@ class SplashActivity : AppCompatActivity() {
         enableEdgeToEdge()
         binding = ActivitySplashBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        applyDarkSystemBars()
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
@@ -59,8 +57,7 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun allPermissionsGranted(): Boolean {
-        return hasUsageStatsPermission() &&
-                hasOverlayPermission()
+        return hasUsageStatsPermission() && hasOverlayPermission()
     }
 
     private fun hasUsageStatsPermission(): Boolean {

@@ -7,6 +7,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.sierra.camblock.R
 import com.sierra.camblock.databinding.ActivityHelpBinding
+import com.sierra.camblock.utils.applyDarkSystemBars
 
 class HelpActivity : AppCompatActivity() {
     private lateinit var binding : ActivityHelpBinding
@@ -16,7 +17,8 @@ class HelpActivity : AppCompatActivity() {
         enableEdgeToEdge()
         binding = ActivityHelpBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        
+        applyDarkSystemBars(R.color.parent_bg)
+
         setupWindowInsets()
         setupClickListeners()
     }

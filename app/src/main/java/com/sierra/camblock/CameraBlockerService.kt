@@ -8,6 +8,7 @@ import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.hardware.camera2.CameraManager
 import android.os.Build
@@ -145,7 +146,28 @@ class CameraBlockerService : Service() {
             .setOngoing(true)
             .build()
 
-        startForeground(1, notification)
+        // Android 14 (API 34) enforces that the foregroundServiceType passed to
+        // startForeground() matches the one declared in the manifest AND that the
+        // app holds the corresponding FOREGROUND_SERVICE_* permission. The service
+        // only observes camera availability (no capture), so we use specialUse.
+        // Guarding with try/catch prevents a process-wide crash if the platform
+        // still rejects the start (e.g. OEM restrictions, background launch denied).
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    1,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                )
+            } else {
+                startForeground(1, notification)
+            }
+        } catch (e: Exception) {
+            Log.e("CameraBlocker", "startForeground failed", e)
+            // Stop self so the system does not keep the service in a half-started
+            // state that would trigger ForegroundServiceDidNotStartInTimeException.
+            stopSelf()
+        }
     }
 
     private fun checkForegroundApp() {
