@@ -1,25 +1,33 @@
 package com.sierra.camblock.activity
 
-import android.app.AppOpsManager
-import android.content.Context
 import android.content.Intent
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.sierra.camblock.R
 import com.sierra.camblock.databinding.ActivityPermissionBinding
+import com.sierra.camblock.utils.PermissionUtils
+import com.sierra.camblock.utils.PrefsManager
 import com.sierra.camblock.utils.applyDarkSystemBars
 
+/**
+ * Collects the two runtime permissions required for the blocker to work:
+ *   1. System Alert Window (overlay)                 — unchanged.
+ *   2. Accessibility Service (replaces Usage Stats)  — new.
+ *
+ * The XML still labels the first switch "Usage Stat" for historical reasons,
+ * but we now bind it to the Accessibility permission so older screenshots /
+ * layouts keep working without a full redesign.
+ */
 class PermissionActivity : AppCompatActivity() {
     private lateinit var binding: ActivityPermissionBinding
+    private lateinit var prefsManager: PrefsManager
 
     private val settingsLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -40,6 +48,11 @@ class PermissionActivity : AppCompatActivity() {
             insets
         }
 
+        prefsManager = PrefsManager(this)
+
+        // Relabel the first permission card to match the new behaviour.
+        binding.tvUsageStat.text = getString(R.string.permission_accessibility_title)
+
         setupSwitches()
         updateAllSwitches()
         updateContinueButton()
@@ -50,19 +63,23 @@ class PermissionActivity : AppCompatActivity() {
                 finish()
             } else {
                 val pendingPermissions = getPendingPermissionsList()
-                Toast.makeText(this, "Please grant $pendingPermissions permission(s)", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    "Please grant $pendingPermissions permission(s)",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
 
     private fun setupSwitches() {
         binding.swUsageStat.setOnClickListener {
-            if (hasUsageStatsPermission()) {
+            if (hasAccessibilityPermission()) {
                 binding.swUsageStat.isChecked = true
                 updateContinueButton()
             } else {
                 binding.swUsageStat.isChecked = false
-                requestUsageStatsPermission()
+                showAccessibilityRationale()
             }
         }
 
@@ -78,7 +95,7 @@ class PermissionActivity : AppCompatActivity() {
     }
 
     private fun updateAllSwitches() {
-        binding.swUsageStat.isChecked = hasUsageStatsPermission()
+        binding.swUsageStat.isChecked = hasAccessibilityPermission()
         binding.swOverlay.isChecked = hasOverlayPermission()
     }
 
@@ -94,51 +111,63 @@ class PermissionActivity : AppCompatActivity() {
     }
 
     private fun allPermissionsGranted(): Boolean {
-        return hasUsageStatsPermission() && hasOverlayPermission()
+        return hasAccessibilityPermission() && hasOverlayPermission()
     }
 
     private fun getPendingPermissionsList(): String {
         val pending = mutableListOf<String>()
-        if (!hasUsageStatsPermission()) pending.add("Usage Stats")
+        if (!hasAccessibilityPermission()) pending.add("Accessibility")
         if (!hasOverlayPermission()) pending.add("Overlay")
         return pending.joinToString(", ")
     }
 
-    private fun hasUsageStatsPermission(): Boolean {
-        val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
-        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            appOps.unsafeCheckOpNoThrow(
-                AppOpsManager.OPSTR_GET_USAGE_STATS,
-                android.os.Process.myUid(),
-                packageName
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            appOps.checkOpNoThrow(
-                AppOpsManager.OPSTR_GET_USAGE_STATS,
-                android.os.Process.myUid(),
-                packageName
-            )
-        }
-        return mode == AppOpsManager.MODE_ALLOWED
+    private fun hasAccessibilityPermission(): Boolean =
+        PermissionUtils.isAccessibilityServiceEnabled(this)
+
+    private fun hasOverlayPermission(): Boolean =
+        PermissionUtils.hasOverlayPermission(this)
+
+    /**
+     * Explain to the user *why* the Accessibility permission is needed
+     * before we throw them into the system Settings screen. Google's Play
+     * policy for non-assistive Accessibility use mandates this disclosure.
+     */
+    private fun showAccessibilityRationale() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.permission_accessibility_title)
+            .setMessage(R.string.permission_accessibility_rationale)
+            .setPositiveButton("Open Settings") { _, _ ->
+                prefsManager.isAccessibilityPermit = true
+                launchAccessibilitySettings()
+            }
+            .setNegativeButton("Cancel", null)
+            .setCancelable(false)
+            .show()
     }
 
-    private fun hasOverlayPermission(): Boolean {
-        return Settings.canDrawOverlays(this)
-    }
-
-    private fun requestUsageStatsPermission() {
-        val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
-            data = Uri.fromParts("package", packageName, null)
+    private fun launchAccessibilitySettings() {
+        val intent = PermissionUtils.buildAccessibilitySettingsIntent(this)
+        try {
+            settingsLauncher.launch(intent)
+        } catch (e: Exception) {
+            // Fallback to the generic Accessibility settings page if the
+            // direct-to-service deep link is unsupported (some OEM skins).
+            try {
+                settingsLauncher.launch(
+                    Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                )
+            } catch (e2: Exception) {
+                Toast.makeText(
+                    this,
+                    "Could not open Accessibility Settings",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
         }
-        settingsLauncher.launch(intent)
     }
 
     private fun requestOverlayPermission() {
-        val intent = Intent(
-            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-            Uri.fromParts("package", packageName, null)
-        )
+        val intent = PermissionUtils.buildOverlaySettingsIntent(this)
         settingsLauncher.launch(intent)
     }
 

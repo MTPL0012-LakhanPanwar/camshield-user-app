@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Accessibility service configuration for CameraBlockerAccessibilityService.
+
+    We subscribe ONLY to typeWindowStateChanged — it fires the moment a new
+    activity becomes the top-of-stack window and is what we use to detect
+    camera apps opening.
+
+    typeWindowsChanged was intentionally removed: it ALSO fires for system
+    window additions/removals including our own TYPE_APPLICATION_OVERLAY,
+    which previously caused a feedback loop (overlay add → TYPE_WINDOWS_CHANGED
+    with event.packageName = ours → updateOverlayState saw "own package in
+    foreground" → hideOverlay → remove event → add again → flicker).
+
+    notificationTimeout=0 means "deliver as fast as possible"; the default of
+    100 ms would otherwise cap our detection latency.
+
+    We do NOT retrieve window content (`canRetrieveWindowContent="false"`) so
+    the consent screen stays minimal and Google Play policy compliant.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault|flagIncludeNotImportantViews"
+    android:canPerformGestures="false"
+    android:canRetrieveWindowContent="false"
+    android:description="@string/accessibility_service_description"
+    android:notificationTimeout="0"
+    android:settingsActivity="com.sierra.camblock.activity.PermissionActivity"
+    android:summary="@string/accessibility_service_summary" />

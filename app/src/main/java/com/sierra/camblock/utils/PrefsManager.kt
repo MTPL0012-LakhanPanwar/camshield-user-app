@@ -26,9 +26,21 @@ class PrefsManager(context: Context) {
         get() = prefs.getBoolean("overlay_permit",false)
         set(value) = prefs.edit().putBoolean("overlay_permit",value).apply()
 
+    /**
+     * Legacy flag kept only for backward-compat with older installs that
+     * may have persisted it. Nothing writes to it anymore — call sites have
+     * migrated to [isAccessibilityPermit]. Safe to remove after a few
+     * release cycles.
+     */
+    @Deprecated("Usage Stats has been replaced by the Accessibility Service")
     var isUsageStatPermit : Boolean
         get() = prefs.getBoolean("usage_stat_permit",false)
         set(value) = prefs.edit().putBoolean("usage_stat_permit",value).apply()
+
+    /** User has been guided through granting the Accessibility permission. */
+    var isAccessibilityPermit : Boolean
+        get() = prefs.getBoolean("accessibility_permit", false)
+        set(value) = prefs.edit().putBoolean("accessibility_permit", value).apply()
 
     var entryToken: String?
         get() = prefs.getString(KEY_ENTRY_TOKEN, null)

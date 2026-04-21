@@ -1,13 +1,9 @@
 package com.sierra.camblock.activity
 
-import android.app.AppOpsManager
-import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.provider.Settings
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -15,6 +11,7 @@ import androidx.core.view.WindowInsetsCompat
 import com.sierra.camblock.R
 import com.sierra.camblock.databinding.ActivitySplashBinding
 import com.sierra.camblock.manager.DeviceAdminManager
+import com.sierra.camblock.utils.PermissionUtils
 import com.sierra.camblock.utils.applyDarkSystemBars
 
 class SplashActivity : AppCompatActivity() {
@@ -57,29 +54,7 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun allPermissionsGranted(): Boolean {
-        return hasUsageStatsPermission() && hasOverlayPermission()
-    }
-
-    private fun hasUsageStatsPermission(): Boolean {
-        val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
-        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            appOps.unsafeCheckOpNoThrow(
-                AppOpsManager.OPSTR_GET_USAGE_STATS,
-                android.os.Process.myUid(),
-                packageName
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            appOps.checkOpNoThrow(
-                AppOpsManager.OPSTR_GET_USAGE_STATS,
-                android.os.Process.myUid(),
-                packageName
-            )
-        }
-        return mode == AppOpsManager.MODE_ALLOWED
-    }
-
-    private fun hasOverlayPermission(): Boolean {
-        return Settings.canDrawOverlays(this)
+        return PermissionUtils.isAccessibilityServiceEnabled(this) &&
+                PermissionUtils.hasOverlayPermission(this)
     }
 }

@@ -2,7 +2,6 @@ package com.sierra.camblock.activity
 
 import android.Manifest
 import android.app.ActivityManager
-import android.app.AppOpsManager
 import android.app.Dialog
 import android.app.admin.DeviceAdminReceiver
 import android.app.admin.DevicePolicyManager
@@ -14,7 +13,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
-import android.os.Process
 import android.provider.Settings
 import android.util.Log
 import android.view.View
@@ -39,6 +37,7 @@ import com.sierra.camblock.databinding.ActivityMainBinding
 import com.sierra.camblock.manager.DeviceAdminManager
 import com.sierra.camblock.utils.Constants
 import com.sierra.camblock.utils.DeviceUtils
+import com.sierra.camblock.utils.PermissionUtils
 import com.sierra.camblock.utils.PrefsManager
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
@@ -289,15 +288,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // 3. Usage Stats - Only check if Overlay is done and Usage is  not yet flagged
-        if (!hasUsageStatsPermission()) {
-            if (!prefsManager.isUsageStatPermit) {
-                showPermissionDialog(
-                    "Usage Access Required",
-                    "Final Step: Enable 'Usage Access' to detect camera activity.",
-                    Settings.ACTION_USAGE_ACCESS_SETTINGS,
-                    "USAGE" // Pass the type
-                )
+        // 3. Accessibility Service - provides instant camera-app detection.
+        //    Only prompt if not granted AND we have not previously nudged the
+        //    user (prefs flag avoids re-opening Settings on every scan).
+        if (!PermissionUtils.isAccessibilityServiceEnabled(this)) {
+            if (!prefsManager.isAccessibilityPermit) {
+                showAccessibilityPermissionDialog()
                 return false
             }
         }
@@ -475,7 +471,6 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Grant") { _, _ ->
                 // Mark the permission as "Attempted/Accepted" immediately
                 if (permissionType == "OVERLAY") prefsManager.isOverlayPermit = true
-                if (permissionType == "USAGE") prefsManager.isUsageStatPermit = true
 
                 isWaitingForPermission = true
                 val intent = Intent(action)
@@ -486,6 +481,42 @@ class MainActivity : AppCompatActivity() {
                 isWaitingForPermission = false
             }
             .setCancelable(false) // Better for a setup flow
+            .show()
+    }
+
+    /**
+     * Dedicated prompt for the Accessibility permission. Uses the direct
+     * deep-link intent built in [PermissionUtils] so that users land on the
+     * CamShield service sub-page when the OEM ROM supports it, and falls
+     * back to the generic Accessibility Settings screen otherwise.
+     */
+    private fun showAccessibilityPermissionDialog() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.permission_accessibility_title)
+            .setMessage(R.string.permission_accessibility_rationale)
+            .setPositiveButton("Open Settings") { _, _ ->
+                prefsManager.isAccessibilityPermit = true
+                isWaitingForPermission = true
+                try {
+                    startActivity(PermissionUtils.buildAccessibilitySettingsIntent(this))
+                } catch (e: Exception) {
+                    Log.e(TAG, "Direct a11y intent failed, falling back", e)
+                    try {
+                        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    } catch (e2: Exception) {
+                        Log.e(TAG, "Accessibility settings launch failed", e2)
+                        Toast.makeText(
+                            this,
+                            "Could not open Accessibility Settings",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel") { _, _ ->
+                isWaitingForPermission = false
+            }
+            .setCancelable(false)
             .show()
     }
     // Resume flow helper
@@ -638,24 +669,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun hasUsageStatsPermission(): Boolean {
-        val appOps = getSystemService(APP_OPS_SERVICE) as AppOpsManager
-        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            appOps.unsafeCheckOpNoThrow(
-                AppOpsManager.OPSTR_GET_USAGE_STATS,
-                Process.myUid(),
-                packageName
-            )
-        } else {
-            appOps.checkOpNoThrow(
-                AppOpsManager.OPSTR_GET_USAGE_STATS,
-                Process.myUid(),
-                packageName
-            )
-        }
-        return mode == AppOpsManager.MODE_ALLOWED
-    }
-
     private fun lockCamera() {
         // Persist lock state
         prefsManager.isLocked = true
@@ -756,9 +769,9 @@ class MainActivity : AppCompatActivity() {
         try {
             // Request additional permissions that might help with MIUI 14+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                // Try to get usage stats permission if not already granted
-                if (!hasUsageStatsPermission()) {
-                    Log.w(TAG, "MIUI 14+: Usage stats permission not granted - blocking may be less effective")
+                // Accessibility Service is the new foreground-detector.
+                if (!PermissionUtils.isAccessibilityServiceEnabled(this)) {
+                    Log.w(TAG, "MIUI 14+: Accessibility service not enabled - blocking may be less effective")
                 }
 
                 // Log MIUI version for debugging

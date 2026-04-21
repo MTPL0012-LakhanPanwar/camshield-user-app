@@ -12,4 +12,14 @@
     <string name="camera_permission_required">Camera permission is required to scan QR codes</string>
     <string name="info_camera_unlocked">Camera is currently unlocked and available for use.</string>
     <string name="info_camera_locked">Camera is currently locked for security.</string>
+
+    <!-- Accessibility service metadata -->
+    <string name="accessibility_service_label">CamBlock Camera Guard</string>
+    <string name="accessibility_service_summary">Instantly blocks camera apps while you are inside a restricted facility.</string>
+    <string name="accessibility_service_description">CamBlock uses the Accessibility Service only to detect when a camera app opens and immediately block it. It does NOT read window content, type, or record anything.</string>
+
+    <!-- Permission card strings -->
+    <string name="permission_accessibility_title">Accessibility Service</string>
+    <string name="permission_accessibility_subtitle">Required to instantly block camera apps the moment they open.</string>
+    <string name="permission_accessibility_rationale">CamBlock needs the Accessibility Service enabled so it can detect when a camera app comes to the foreground and immediately close it while you are inside a restricted facility.\n\nIt does NOT read your screen, record keystrokes, or collect any personal data.</string>
 </resources>
