@@ -35,8 +35,10 @@ import com.sierra.camblock.api.models.DeviceInfo
 import com.sierra.camblock.api.models.ScanEntryRequest
 import com.sierra.camblock.api.models.ScanExitRequest
 import com.sierra.camblock.manager.DeviceAdminManager
+import com.sierra.camblock.utils.BlockState
 import com.sierra.camblock.utils.Constants
 import com.sierra.camblock.utils.DeviceUtils
+import com.sierra.camblock.utils.OverlayController
 import com.sierra.camblock.utils.PermissionUtils
 import com.sierra.camblock.utils.PrefsManager
 import com.sierra.camblock.utils.applyDarkSystemBarsColor
@@ -393,6 +395,13 @@ class ScanActivity : AppCompatActivity() {
         }
         prefsManager.isLocked = false
         prefsManager.activeVisitorId = ""
+        // Clear the persisted sticky acknowledgement flag so a stale block
+        // state from the previous session cannot re-trigger the overlay
+        // after process death (e.g. if the user "clear all" from recents
+        // during an unacknowledged block and then scans exit later).
+        prefsManager.needsAcknowledgement = false
+        BlockState.reset()
+        OverlayController.hide()
         stopService(Intent(this, CameraBlockerService::class.java))
 
         if (deviceAdminManager.unlockCamera()) {

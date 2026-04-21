@@ -6,22 +6,16 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.graphics.PixelFormat
 import android.hardware.camera2.CameraManager
 import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
 import android.os.Looper
-import android.provider.Settings
 import android.util.Log
-import android.view.Gravity
-import android.view.LayoutInflater
-import android.view.View
-import android.view.WindowManager
-import android.widget.Button
 import androidx.core.app.NotificationCompat
 import com.sierra.camblock.utils.BlockState
+import com.sierra.camblock.utils.OverlayController
 import com.sierra.camblock.utils.PrefsManager
 
 /**
@@ -104,9 +98,6 @@ class CameraBlockerService : Service() {
 
     private lateinit var cameraManager: CameraManager
     private lateinit var prefsManager: PrefsManager
-    private var windowManager: WindowManager? = null
-    private var overlayView: View? = null
-    private var isOverlayShowing = false
 
     /**
      * Heartbeat that every [OVERLAY_WATCHDOG_INTERVAL_MS] ms verifies
@@ -195,6 +186,11 @@ class CameraBlockerService : Service() {
             // HAL actually being reserved.
             handler.postAtFrontOfQueue {
                 applyBlockImmediately()
+                // Ask the accessibility service to HOME away the camera
+                // app. If for some reason the a11y service isn't alive
+                // right now (e.g. in the first few ms after a 'clear
+                // all' process restart) we still have the overlay up,
+                // so the camera preview is already covered.
                 if (!wasAlreadyBlocking) {
                     CameraBlockerAccessibilityService.performHome()
                 }
@@ -211,14 +207,29 @@ class CameraBlockerService : Service() {
         super.onCreate()
         prefsManager = PrefsManager(this)
         cameraManager = getSystemService(CAMERA_SERVICE) as CameraManager
-        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         // Pre-inflate the blocking overlay *before* the first camera-app
         // event arrives. Inflation is the slowest step in the block hot
         // path (measured ~20-60 ms on a cold JIT). Doing it once at
-        // service start means showOverlay() → addView is the only work
-        // left on the critical path — typically 1-2 ms.
-        ensureOverlayInflated()
+        // service start means show() → addView is the only work left on
+        // the critical path — typically 1-2 ms.
+        OverlayController.initialize(this)
+
+        // Wire up SharedPreferences persistence of the sticky flag AND
+        // restore any previously-persisted value. This is critical for
+        // the Samsung 'clear all from recents' scenario: when that
+        // gesture kills our process, BlockState's AtomicBooleans reset
+        // to their defaults. Without persistence, a user who was in
+        // the middle of an un-acknowledged block would simply see the
+        // overlay disappear after process restart. With persistence,
+        // we restore the sticky flag and re-paint the overlay as soon
+        // as this service's onStartCommand fires.
+        BlockState.persistentAckSetter = { value ->
+            prefsManager.needsAcknowledgement = value
+        }
+        if (prefsManager.isLocked && prefsManager.needsAcknowledgement) {
+            BlockState.restoreAcknowledgementFromPersistence(true)
+        }
 
         // Spin up the dedicated camera-callback Looper BEFORE registering
         // the availability callback, so the HAL dispatches to it from the
@@ -282,7 +293,11 @@ class CameraBlockerService : Service() {
         if (instance === this) instance = null
         handler.removeCallbacks(overlayWatchdog)
         handler.removeCallbacksAndMessages(null)
-        hideOverlay()
+        // NB: We intentionally do NOT call OverlayController.hide() here.
+        // The accessibility service may still be alive and may legitimately
+        // want the overlay on-screen (e.g. a 'clear all' only killed us,
+        // not the a11y service). The controller is process-wide and
+        // tolerates being called from either owner.
         try {
             cameraManager.unregisterAvailabilityCallback(cameraCallback)
         } catch (e: Exception) {
@@ -348,72 +363,21 @@ class CameraBlockerService : Service() {
         }
     }
 
+    /**
+     * Refresh the overlay's visible state to match current [BlockState] +
+     * session gates. Delegates to [OverlayController.enforce] which owns
+     * the actual WindowManager lifecycle. When the user is no longer
+     * locked we also call [BlockState.reset] so any stale sticky flag
+     * from a previous session is cleared (both in-memory and persisted).
+     */
     private fun updateOverlayState() {
         if (!prefsManager.isLocked) {
-            // Defensive: if the device is no longer locked (user scanned the
-            // exit QR, for example) any sticky block state from a previous
-            // session is irrelevant and must not carry over.
             BlockState.reset()
-            hideOverlay()
-            return
+            // reset() does not go through the persistent setter, so
+            // make sure the persisted mirror is cleared too.
+            prefsManager.needsAcknowledgement = false
         }
-
-        // Never cover our own UI. The Accessibility service already filters
-        // out events from our own package, so `BlockState.foregroundPackage`
-        // cannot reliably be used to detect our own foreground state; we use
-        // the [CamShield.isOwnAppInForeground] counter instead. This also
-        // ensures that if a stale sticky-acknowledgement flag somehow
-        // survives, it will not obscure e.g. the exit-scan screen.
-        if (CamShield.isOwnAppInForeground) {
-            hideOverlay()
-            return
-        }
-
-        if (BlockState.shouldBlock()) {
-            showOverlay()
-        } else {
-            hideOverlay()
-        }
-    }
-
-    /**
-     * Inflate the overlay View and attach its click handlers. Idempotent —
-     * calling it multiple times is a no-op after the first successful
-     * inflate. Invoked from [onCreate] so the View is warm by the time
-     * the first camera-app event arrives.
-     */
-    private fun ensureOverlayInflated() {
-        if (overlayView != null) return
-        try {
-            val inflater = getSystemService(LAYOUT_INFLATER_SERVICE) as LayoutInflater
-            val view = inflater.inflate(R.layout.activity_blocked, null)
-
-            // "I Understand" dismissal:
-            //   1. Clear the sticky flag so shouldBlock() returns false.
-            //   2. Remove the overlay View immediately (do not rely on
-            //      the state-change listener alone, which may run on
-            //      the next frame).
-            //   3. Bring the launcher back to front for good measure —
-            //      the camera app may still be in the recents stack.
-            view.findViewById<Button>(R.id.btnDismiss)?.setOnClickListener {
-                Log.d(TAG, "User acknowledged block")
-                BlockState.acknowledge()
-                hideOverlay()
-                try {
-                    val startMain = Intent(Intent.ACTION_MAIN).apply {
-                        addCategory(Intent.CATEGORY_HOME)
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                                Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    }
-                    startActivity(startMain)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to launch home after dismiss", e)
-                }
-            }
-            overlayView = view
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to pre-inflate overlay", e)
-        }
+        OverlayController.enforce(this, prefsManager.isLocked)
     }
 
     /**
@@ -431,140 +395,18 @@ class CameraBlockerService : Service() {
         if (!prefsManager.isLocked) return false
         if (CamShield.isOwnAppInForeground) return false
         BlockState.requireAcknowledgement()
-        showOverlay()
-        return isOverlayShowing
+        return OverlayController.show(this)
     }
 
     /**
-     * Build the overlay's WindowManager.LayoutParams. Extracted so both
-     * the normal [showOverlay] path and the hot-path [applyBlockImmediately]
-     * share the exact same window configuration.
-     */
-    private fun buildOverlayLayoutParams(): WindowManager.LayoutParams {
-        // Flags picked for maximum compatibility (Xiaomi, OneUI, Pixel):
-        //   FLAG_NOT_TOUCH_MODAL  — keep window touchable within bounds
-        //                            while allowing touches outside to
-        //                            pass through (moot at fullscreen).
-        //   FLAG_LAYOUT_IN_SCREEN — lay out under status/nav bars too.
-        //   FLAG_KEEP_SCREEN_ON   — prevent dimming while overlay visible.
-        //   FLAG_SHOW_WHEN_LOCKED — render even over secure lockscreen.
-        //   FLAG_LAYOUT_NO_LIMITS — allow extending into cutout area.
-        //   FLAG_FULLSCREEN       — request true fullscreen.
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else
-                WindowManager.LayoutParams.TYPE_PHONE,
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
-                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN,
-            PixelFormat.TRANSLUCENT
-        )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            params.layoutInDisplayCutoutMode =
-                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-        }
-        params.gravity = Gravity.CENTER
-        return params
-    }
-
-    private fun showOverlay() {
-        // Double check Overlay Permission
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-            Log.e(TAG, "Cannot show overlay: Permission missing")
-            return
-        }
-
-        // Defensive: if onCreate's pre-inflate failed for some reason
-        // (OOM, theme resolution race), try inflating again on demand.
-        ensureOverlayInflated()
-        val view = overlayView ?: return
-
-        // Desync detection: if we *think* the overlay is showing but the
-        // View is not actually attached to the WindowManager, correct
-        // our bookkeeping. This happens on OneUI during high-memory
-        // situations where the framework silently detaches overlay
-        // windows behind our back. Without this check, the early-return
-        // below would leave the user unblocked forever.
-        if (isOverlayShowing && !view.isAttachedToWindow) {
-            Log.w(TAG, "Overlay was detached behind our back — re-attaching")
-            isOverlayShowing = false
-        }
-
-        if (isOverlayShowing) return
-
-        try {
-            view.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_FULLSCREEN
-                    or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
-
-            windowManager?.addView(view, buildOverlayLayoutParams())
-            isOverlayShowing = true
-            Log.d(TAG, "Overlay SHOWN")
-        } catch (e: IllegalStateException) {
-            // "View has already been added to the window manager." —
-            // recover gracefully by flipping our flag and moving on.
-            Log.w(TAG, "addView reported already attached — syncing state", e)
-            isOverlayShowing = true
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to show overlay", e)
-        }
-    }
-
-    /**
-     * Watchdog tick. Runs every [OVERLAY_WATCHDOG_INTERVAL_MS] ms on the
-     * main thread and guarantees that the overlay's actual visibility
-     * matches the intended state in [BlockState]. The three cases are:
-     *
-     *   1. Should block, not currently showing → re-attach.
-     *   2. Should block, flagged as showing but View detached → re-attach.
-     *   3. Should NOT block but overlay is up → remove it.
-     *
-     * All three are no-ops in the 99 %+ steady-state case; the boolean
-     * short-circuits make this effectively free when nothing is wrong.
+     * Watchdog tick (every [OVERLAY_WATCHDOG_INTERVAL_MS] ms). This is the
+     * last line of defence for the pathological case where both primary
+     * signals (Accessibility event + CameraManager availability callback)
+     * are throttled by the OS under memory pressure, or where OneUI's
+     * window manager silently detached our overlay. [OverlayController.enforce]
+     * is cheap and idempotent — a no-op when state is already consistent.
      */
     private fun enforceOverlayState() {
-        // If we are not locked there is nothing to enforce — the regular
-        // state listener will have hidden the overlay already.
-        if (!prefsManager.isLocked) return
-        // Never enforce a block over our own UI (scanning flow).
-        if (CamShield.isOwnAppInForeground) return
-
-        val shouldBeShowing = BlockState.shouldBlock()
-        val view = overlayView
-
-        if (shouldBeShowing) {
-            val needsAttach = !isOverlayShowing ||
-                    (view != null && !view.isAttachedToWindow)
-            if (needsAttach) {
-                Log.d(TAG, "Watchdog re-attaching overlay (wasShowing=$isOverlayShowing)")
-                // Reset flag so showOverlay() does not early-return.
-                isOverlayShowing = false
-                showOverlay()
-            }
-        }
+        OverlayController.enforce(this, prefsManager.isLocked)
     }
-
-    private fun hideOverlay() {
-        if (!isOverlayShowing) return
-
-        try {
-            if (overlayView != null && windowManager != null) {
-                windowManager?.removeView(overlayView)
-            }
-            isOverlayShowing = false
-            Log.d("CameraBlocker", "Overlay HIDDEN")
-        } catch (e: Exception) {
-            Log.e("CameraBlocker", "Failed to hide overlay", e)
-        }
-    }
-
 }

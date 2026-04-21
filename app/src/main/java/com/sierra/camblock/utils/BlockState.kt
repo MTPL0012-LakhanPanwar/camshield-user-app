@@ -76,16 +76,46 @@ object BlockState {
         get() = needsAcknowledgementRef.get()
 
     /**
+     * Optional SharedPreferences-backed persistence sink for
+     * [needsAcknowledgement]. When set, transitions of the sticky flag
+     * are mirrored into prefs so they survive a full process kill
+     * (e.g. "clear all" from recents on Samsung OneUI).
+     *
+     * Set once at service startup and cleared on destroy; see
+     * [CameraBlockerService.onCreate] and
+     * [CameraBlockerAccessibilityService.onServiceConnected].
+     */
+    @Volatile
+    var persistentAckSetter: ((Boolean) -> Unit)? = null
+
+    /**
      * Marks the overlay as requiring explicit user dismissal. Idempotent —
      * calling it repeatedly will not trigger duplicate listener notifications.
      */
     fun requireAcknowledgement() {
-        if (!needsAcknowledgementRef.getAndSet(true)) notifyChanged()
+        if (!needsAcknowledgementRef.getAndSet(true)) {
+            persistentAckSetter?.invoke(true)
+            notifyChanged()
+        }
     }
 
     /** Called from the overlay's "I Understand" click handler. */
     fun acknowledge() {
-        if (needsAcknowledgementRef.getAndSet(false)) notifyChanged()
+        if (needsAcknowledgementRef.getAndSet(false)) {
+            persistentAckSetter?.invoke(false)
+            notifyChanged()
+        }
+    }
+
+    /**
+     * Seed the in-memory sticky flag from a previously persisted value.
+     * Called by the accessibility / blocker service during `onCreate`
+     * so that a freshly-restarted process (after "clear all") can
+     * immediately paint the overlay without waiting for a camera event.
+     */
+    fun restoreAcknowledgementFromPersistence(persisted: Boolean) {
+        needsAcknowledgementRef.set(persisted)
+        if (persisted) notifyChanged()
     }
 
     /**

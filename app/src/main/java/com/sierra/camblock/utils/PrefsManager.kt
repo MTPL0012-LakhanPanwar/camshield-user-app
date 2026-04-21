@@ -53,7 +53,27 @@ class PrefsManager(context: Context) {
     var isXiaomiSetupDone: Boolean
         get() = prefs.getBoolean("xiaomi_setup_done", false)
         set(value) = prefs.edit().putBoolean("xiaomi_setup_done", value).apply()
-        
+
+    /**
+     * Persisted mirror of [BlockState.needsAcknowledgement].
+     *
+     * Why persist it?  On Samsung / OneUI, swiping "clear all" from
+     * recents kills the entire app process — including the
+     * `CameraBlockerService` foreground service AND the in-memory
+     * `BlockState` AtomicBooleans. After the system restarts our
+     * accessibility service it must know whether the user was already
+     * inside an un-acknowledged block so the overlay can be painted
+     * immediately on process restart, before the user has any chance
+     * to open the camera app during the 1-3 s service-startup window.
+     *
+     * Only written on [BlockState.requireAcknowledgement] /
+     * [BlockState.acknowledge] transitions so SharedPreferences I/O is
+     * trivial (two writes per block cycle).
+     */
+    var needsAcknowledgement: Boolean
+        get() = prefs.getBoolean("needs_acknowledgement", false)
+        set(value) = prefs.edit().putBoolean("needs_acknowledgement", value).apply()
+
     fun clear() {
         prefs.edit().clear().apply()
     }

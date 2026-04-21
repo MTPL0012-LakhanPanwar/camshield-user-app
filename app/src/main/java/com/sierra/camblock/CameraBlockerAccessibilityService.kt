@@ -10,6 +10,7 @@ import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import com.sierra.camblock.utils.BlockState
 import com.sierra.camblock.utils.CameraApps
+import com.sierra.camblock.utils.OverlayController
 import com.sierra.camblock.utils.PrefsManager
 import java.lang.ref.WeakReference
 
@@ -102,6 +103,40 @@ class CameraBlockerAccessibilityService : AccessibilityService() {
             Log.e(TAG, "Failed to set serviceInfo", e)
         }
 
+        // ------------------------------------------------------------------
+        // "Clear all from recents" hardening (Samsung OneUI).
+        //
+        // After the user swipes all apps from recents the OS kills our
+        // process, which wipes in-memory BlockState AND destroys the
+        // foreground CameraBlockerService. The accessibility service is
+        // restarted by the framework hundreds of ms BEFORE the foreground
+        // service comes back up — creating a window in which the user
+        // could open the camera with nothing to stop them.
+        //
+        // To close that window we:
+        //   1. Pre-inflate the overlay here, so OverlayController.show()
+        //      is ready the instant we need it.
+        //   2. Wire up the SharedPrefs persistence sink for the sticky
+        //      acknowledgement flag.
+        //   3. Restore that flag from SharedPrefs and, if it was set at
+        //      the time of the kill, PAINT THE OVERLAY RIGHT NOW — before
+        //      the user has a chance to open anything. This guarantees
+        //      that mid-block process death cannot bypass the blocker.
+        //   4. Start the foreground service in the background so the
+        //      camera-hardware callback comes back online.
+        // ------------------------------------------------------------------
+        OverlayController.initialize(this)
+        BlockState.persistentAckSetter = { value ->
+            prefsManager.needsAcknowledgement = value
+        }
+        if (prefsManager.isLocked && prefsManager.needsAcknowledgement) {
+            Log.d(TAG, "Restoring sticky block after process restart")
+            BlockState.restoreAcknowledgementFromPersistence(true)
+            // Paint the overlay directly from the a11y service — don't
+            // wait for CameraBlockerService to come back up.
+            OverlayController.show(this)
+        }
+
         // Make sure the overlay/foreground service is up. Starting it from
         // an already-running accessibility service respects the background
         // start restrictions introduced in Android 12+.
@@ -162,16 +197,18 @@ class CameraBlockerAccessibilityService : AccessibilityService() {
         //   camera preview from ever being visible, even when OneUI's
         //   HOME animation is slow.
         //
-        //   `blockNowSynchronously` returns false only if the service
-        //   is not currently running — in which case we fall back to
-        //   the slow path below (start the service and let its onCreate
-        //   → updateOverlayState render the overlay a few frames later).
+        //   `blockNowSynchronously` returns false only if the foreground
+        //   service is not currently alive (e.g. the user just cleared
+        //   recents and the system is still respawning it). In that
+        //   case we fall back to painting the overlay DIRECTLY from the
+        //   accessibility service via the shared [OverlayController] —
+        //   which is already initialized with a pre-inflated View from
+        //   our [onServiceConnected] — so the user never sees the
+        //   preview, even during the foreground-service restart window.
         val blocked = CameraBlockerService.blockNowSynchronously()
         if (!blocked) {
-            // Slow path: service was not alive. Start it — its onCreate
-            // will see the sticky flag we are about to set and render
-            // the overlay on its first update tick.
             BlockState.requireAcknowledgement()
+            OverlayController.show(this)
             ensureBlockerServiceRunning()
         }
 
