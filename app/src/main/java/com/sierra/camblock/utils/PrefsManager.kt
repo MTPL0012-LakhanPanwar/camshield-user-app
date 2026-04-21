@@ -11,6 +11,7 @@ class PrefsManager(context: Context) {
         private const val PREF_NAME = "camera_lock_prefs"
         private const val KEY_IS_LOCKED = "is_locked"
         private const val KEY_ENTRY_TOKEN = "entry_token"
+        private const val KEY_ACTIVE_VISITOR_ID = "active_visitor_id"
     }
 
     var isLocked: Boolean
@@ -32,6 +33,10 @@ class PrefsManager(context: Context) {
     var entryToken: String?
         get() = prefs.getString(KEY_ENTRY_TOKEN, null)
         set(value) = prefs.edit().putString(KEY_ENTRY_TOKEN, value).apply()
+
+    var activeVisitorId: String
+        get() = prefs.getString(KEY_ACTIVE_VISITOR_ID, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_ACTIVE_VISITOR_ID, value).apply()
 
     var isXiaomiSetupDone: Boolean
         get() = prefs.getBoolean("xiaomi_setup_done", false)

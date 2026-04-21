@@ -1,5 +1,6 @@
 package com.sierra.camblock.api
 
+import com.sierra.camblock.BuildConfig
 import com.sierra.camblock.utils.Constants
 import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
@@ -14,12 +15,19 @@ object RetrofitClient {
     
     private fun getRetrofitInstance(): Retrofit {
         if (retrofit == null) {
-            
-            // Logging interceptor for debugging
+
+            // Logging interceptor — BODY in debug, NONE in release so we
+            // don't buffer full response bodies in memory (the BODY logger
+            // prints via android.util.Log.i which is stripped by
+            // `-assumenosideeffects` in release anyway, so it's pure waste).
             val loggingInterceptor = HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
+                level = if (BuildConfig.DEBUG) {
+                    HttpLoggingInterceptor.Level.BODY
+                } else {
+                    HttpLoggingInterceptor.Level.NONE
+                }
             }
-            
+
             // OkHttp client configuration
             val okHttpClient = OkHttpClient.Builder()
                 .addInterceptor(loggingInterceptor)

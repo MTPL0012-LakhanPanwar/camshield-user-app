@@ -1,24 +1,35 @@
 package com.sierra.camblock.activity
 
+import android.Manifest
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.app.ActivityManager
 import android.app.AppOpsManager
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Process
 import android.util.Log
 import android.view.animation.LinearInterpolator
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.gson.Gson
-import com.google.zxing.ResultPoint
-import com.google.zxing.client.android.BeepManager
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.common.InputImage
 import com.sierra.camblock.CameraBlockerService
 import com.sierra.camblock.api.RetrofitClient
 import com.sierra.camblock.api.models.ApiResponse
@@ -29,30 +40,48 @@ import com.sierra.camblock.manager.DeviceAdminManager
 import com.sierra.camblock.utils.Constants
 import com.sierra.camblock.utils.DeviceUtils
 import com.sierra.camblock.utils.PrefsManager
-import com.journeyapps.barcodescanner.BarcodeCallback
-import com.journeyapps.barcodescanner.BarcodeResult
+import com.sierra.camblock.utils.applyDarkSystemBarsColor
+import android.graphics.Color
 import com.sierra.camblock.R
 import com.sierra.camblock.databinding.ActivityScanBinding
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 class ScanActivity : AppCompatActivity() {
+    companion object {
+        const val EXTRA_SCAN_ONLY = "EXTRA_SCAN_ONLY"
+        const val EXTRA_SCANNED_QR = "EXTRA_SCANNED_QR"
+    }
+
     private lateinit var binding : ActivityScanBinding
     private var currentScanAction: ScanAction = ScanAction.NONE
     private var visitorId: String = ""
+    private var isScanOnlyMode: Boolean = false
     private enum class ScanAction { NONE, ENTRY, EXIT }
     private lateinit var deviceAdminManager: DeviceAdminManager
     private lateinit var prefsManager: PrefsManager
-    private lateinit var beepManager: BeepManager
+    private lateinit var cameraExecutor: ExecutorService
+    private var cameraProvider: ProcessCameraProvider? = null
+    private var isCameraStarting: Boolean = false
     private var scanningLineAnimator: ObjectAnimator? = null
-    private var lastScanResult: String? = null
+    private val isScanHandled = AtomicBoolean(false)
+    private val barcodeScanner by lazy {
+        val options = BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .build()
+        BarcodeScanning.getClient(options)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         binding = ActivityScanBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        applyDarkSystemBarsColor(Color.parseColor("#0B101F"))
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
@@ -61,38 +90,164 @@ class ScanActivity : AppCompatActivity() {
 
         deviceAdminManager = DeviceAdminManager(this)
         prefsManager = PrefsManager(this)
-        beepManager = BeepManager(this)
+        cameraExecutor = Executors.newSingleThreadExecutor()
         binding.iToolbar.toolbarTitle.text = "SCAN QR"
         binding.iToolbar.btnBack.setOnClickListener {
-            onBackPressedDispatcher.onBackPressed()
-        }
-        // Get scan action from intent
-        val action = intent.getStringExtra("SCAN_ACTION")
-        currentScanAction = when (action) {
-            "ENTRY" -> ScanAction.ENTRY
-            "EXIT" -> ScanAction.EXIT
-            else -> ScanAction.NONE
+            handleScanCancelledOrFailed(showCancelledToast = false)
         }
 
-        setupBarcodeScanner()
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                handleScanCancelledOrFailed(showCancelledToast = false)
+            }
+        })
+
+        isScanOnlyMode = intent.getBooleanExtra(EXTRA_SCAN_ONLY, false)
+        if (!isScanOnlyMode) {
+            val action = intent.getStringExtra("SCAN_ACTION")
+            currentScanAction = when (action) {
+                "ENTRY" -> ScanAction.ENTRY
+                "EXIT" -> ScanAction.EXIT
+                else -> ScanAction.NONE
+            }
+        }
+
         startScanningLineAnimation()
+        if (hasCameraPermission()) {
+            startCameraScanner()
+        } else {
+            handleMissingCameraPermission()
+        }
 
     }
 
-    private fun setupBarcodeScanner() {
-        binding.zxingBarcodeScanner.viewFinder.setMaskColor(android.graphics.Color.TRANSPARENT)
-        binding.zxingBarcodeScanner.setStatusText("")
-        binding.zxingBarcodeScanner.decodeContinuous(object : BarcodeCallback {
-            override fun barcodeResult(result: BarcodeResult) {
-                if (result.text != null && result.text != lastScanResult) {
-                    lastScanResult = result.text
-                    beepManager.playBeepSoundAndVibrate()
-                    handleScanResult(result.text)
+    private fun hasCameraPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun handleMissingCameraPermission() {
+        showErrorDialog("Camera permission is required to scan QR codes.")
+        handleScanCancelledOrFailed(showCancelledToast = false)
+    }
+
+    private fun startCameraScanner() {
+        if (isScanHandled.get() || isCameraStarting || cameraProvider != null) return
+        if (!isScanOnlyMode && currentScanAction == ScanAction.NONE) {
+            handleScanCancelledOrFailed(showCancelledToast = false)
+            return
+        }
+
+        isCameraStarting = true
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        cameraProviderFuture.addListener({
+            try {
+                val provider = cameraProviderFuture.get()
+                cameraProvider = provider
+
+                val preview = Preview.Builder().build().also {
+                    it.setSurfaceProvider(binding.previewView.surfaceProvider)
+                }
+
+                val imageAnalysis = ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .build()
+                    .also { analysis ->
+                        analysis.setAnalyzer(cameraExecutor) { imageProxy ->
+                            analyzeFrame(imageProxy)
+                        }
+                    }
+
+                provider.unbindAll()
+                provider.bindToLifecycle(
+                    this,
+                    CameraSelector.DEFAULT_BACK_CAMERA,
+                    preview,
+                    imageAnalysis
+                )
+                isCameraStarting = false
+            } catch (e: Exception) {
+                isCameraStarting = false
+                Log.e(javaClass.name, "Failed to start camera scanner", e)
+                showErrorDialog("Unable to start camera scanner.")
+                handleScanCancelledOrFailed(showCancelledToast = false)
+            }
+        }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun analyzeFrame(imageProxy: ImageProxy) {
+        if (isScanHandled.get()) {
+            imageProxy.close()
+            return
+        }
+
+        val mediaImage = imageProxy.image
+        if (mediaImage == null) {
+            imageProxy.close()
+            return
+        }
+
+        val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+        barcodeScanner.process(image)
+            .addOnSuccessListener { barcodes ->
+                val rawValue = barcodes.firstNotNullOfOrNull { barcode ->
+                    barcode.rawValue?.trim()?.takeIf { it.isNotEmpty() }
+                }
+
+                if (rawValue != null && isScanHandled.compareAndSet(false, true)) {
+                    runOnUiThread {
+                        onQrValueDetected(rawValue)
+                    }
                 }
             }
+            .addOnFailureListener { error ->
+                Log.e(javaClass.name, "QR frame analysis failed", error)
+            }
+            .addOnCompleteListener {
+                imageProxy.close()
+            }
+    }
 
-            override fun possibleResultPoints(resultPoints: List<ResultPoint>) {}
-        })
+    private fun onQrValueDetected(rawValue: String) {
+        stopCameraScanner()
+
+        if (isScanOnlyMode) {
+            val resultIntent = Intent().apply {
+                putExtra(EXTRA_SCANNED_QR, rawValue)
+            }
+            setResult(RESULT_OK, resultIntent)
+            finish()
+            return
+        }
+
+        Log.d("QR_SCANNER", "QR Code scanned - Raw content: $rawValue")
+        handleScanResult(rawValue)
+    }
+
+    private fun stopCameraScanner() {
+        isCameraStarting = false
+        cameraProvider?.unbindAll()
+        cameraProvider = null
+    }
+
+    private fun handleScanCancelledOrFailed(showCancelledToast: Boolean) {
+        stopCameraScanner()
+        if (showCancelledToast) {
+            Toast.makeText(this, "Scan Cancelled", Toast.LENGTH_SHORT).show()
+        }
+
+        if (isScanOnlyMode) {
+            setResult(RESULT_CANCELED)
+            finish()
+            return
+        }
+
+        if (currentScanAction == ScanAction.EXIT) {
+            deviceAdminManager.lockCamera()
+        }
+        finish()
     }
 
     private fun startScanningLineAnimation() {
@@ -119,21 +274,28 @@ class ScanActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        binding.zxingBarcodeScanner.resume()
         if (scanningLineAnimator?.isPaused == true) {
             scanningLineAnimator?.resume()
+        }
+        if (!isScanHandled.get() && hasCameraPermission() && cameraProvider == null) {
+            startCameraScanner()
         }
     }
 
     override fun onPause() {
         super.onPause()
-        binding.zxingBarcodeScanner.pause()
         scanningLineAnimator?.pause()
+        stopCameraScanner()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         scanningLineAnimator?.cancel()
+        stopCameraScanner()
+        barcodeScanner.close()
+        if (::cameraExecutor.isInitialized) {
+            cameraExecutor.shutdown()
+        }
     }
 
     private fun handleScanResult(qrContent: String) {
@@ -148,7 +310,6 @@ class ScanActivity : AppCompatActivity() {
                 handleApiError(e)
             } finally {
                 currentScanAction = ScanAction.NONE
-                lastScanResult = null
             }
         }
     }
@@ -232,6 +393,7 @@ class ScanActivity : AppCompatActivity() {
             stopLockTask()
         }
         prefsManager.isLocked = false
+        prefsManager.activeVisitorId = ""
         stopService(Intent(this, CameraBlockerService::class.java))
 
         if (deviceAdminManager.unlockCamera()) {
@@ -247,16 +409,18 @@ class ScanActivity : AppCompatActivity() {
     }
 
     private fun startCamDisabledActivity() {
+        val effectiveVisitorId = if (visitorId.isNotBlank()) visitorId else prefsManager.activeVisitorId
         val intent = Intent(this, CameraDisabledActivity::class.java).apply {
             // These flags clear the entire task stack and make this the new root
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("visitorId", visitorId)
+            putExtra("visitorId", effectiveVisitorId)
         }
         startActivity(intent)
         finish()
     }
 
     private suspend fun processEntryScan(token: String) {
+        Log.d("SCAN_ENTRY", "processEntryScan called with token: $token")
         val deviceId = DeviceUtils.getDeviceId(this)
         val deviceInfo = DeviceInfo(
             manufacturer = Build.MANUFACTURER,
@@ -272,16 +436,19 @@ class ScanActivity : AppCompatActivity() {
             deviceId = deviceId,
             deviceInfo = deviceInfo
         )
+        Log.d("SCAN_ENTRY", "Calling scanEntry API with token: $token, deviceId: $deviceId")
 
         try {
             val response = RetrofitClient.apiService.scanEntry(request)
+            Log.d("SCAN_ENTRY", "scanEntry API response received - isSuccessful: ${response.isSuccessful}, code: ${response.code()}")
 
             if (response.isSuccessful) {
                 val apiBody = response.body()
                 if (apiBody?.status == "success") {
                     // Success! Proceed to Admin request
+                    visitorId = apiBody.data?.visitorId ?: ""
+                    prefsManager.activeVisitorId = visitorId
                     requestDeviceAdmin()
-                    visitorId = response.body()?.data?.visitorId?: ""
                 } else {
                     // Server returned 200 but status was "failure" or similar
                     showErrorDialog(apiBody?.message ?: "Entry denied.")
@@ -305,9 +472,16 @@ class ScanActivity : AppCompatActivity() {
                 finish()
             }
         } catch (e: Exception) {
-            // Handle network failures (No internet, Timeout)
-            Log.e(javaClass.name, "Network Exception: ${e.message}")
-            showErrorDialog("Network error. Please try again.")
+            // Handle network failures (No internet, Timeout) or any other
+            // unexpected error. Use a fixed LOG tag ("CamShield.Scan") because
+            // `javaClass.name` is obfuscated in release and impossible to
+            // grep for in logcat. Surface the exception *type* to the user
+            // so field failures are self-diagnosing without needing a USB
+            // logcat attach — e.g. "UnknownHostException" vs
+            // "JsonSyntaxException" vs "SSLHandshakeException".
+            val type = e.javaClass.simpleName
+            Log.e("CamShield.Scan", "scanEntry failed: $type - ${e.message}", e)
+            showErrorDialog("Network error ($type). Please try again.")
             finish()
         }
     }

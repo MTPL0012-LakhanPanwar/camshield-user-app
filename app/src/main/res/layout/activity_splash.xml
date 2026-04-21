@@ -18,12 +18,10 @@
 
         <ImageView
             android:id="@+id/imageView"
-            android:layout_width="150dp"
-            android:layout_height="150dp"
-            android:background="@drawable/bg_splash_image"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
             android:fitsSystemWindows="true"
-            android:padding="30dp"
-            android:src="@drawable/ic_top_permission"
+            android:src="@drawable/icon_camblock"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -33,11 +31,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
-            android:text="Cam Block"
+            android:gravity="center"
+            android:text="CamBlock"
             android:textColor="#FFFFFF"
             android:textSize="34sp"
             android:textStyle="bold"
-            app:layout_constraintHorizontal_chainStyle="packed"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/imageView" />
 
@@ -46,11 +45,13 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
+            android:gravity="center"
             android:letterSpacing="0.2"
             android:text="ENCRYPTED ACCESS"
             android:textColor="#8A92A6"
             android:textSize="14sp"
-            app:layout_constraintStart_toStartOf="@+id/tvTitleLeft"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/tvTitleLeft" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 

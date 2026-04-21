@@ -4,6 +4,7 @@ import android.app.ActivityManager
 import android.app.Dialog
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.view.View
@@ -12,6 +13,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.WindowInsetsCompat
 import com.sierra.camblock.CameraBlockerService
 import com.sierra.camblock.R
@@ -31,17 +33,39 @@ class CameraDisabledActivity : AppCompatActivity() {
         binding = ActivityCameraDisabledBinding.inflate(layoutInflater)
         setContentView(binding.root)
         prefsManager = PrefsManager(this)
+        applySystemBarsAppearance()
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-        intent.getStringExtra("visitorId")?.let {
-            visitorId = it
-        }
-        binding.tvVisitorID.text = visitorId
+        restoreVisitorId()
         initFields()
         initClickListeners()
+    }
+
+    private fun restoreVisitorId() {
+        val visitorIdFromIntent = intent.getStringExtra("visitorId").orEmpty()
+        visitorId = if (visitorIdFromIntent.isNotBlank()) {
+            prefsManager.activeVisitorId = visitorIdFromIntent
+            visitorIdFromIntent
+        } else {
+            prefsManager.activeVisitorId
+        }
+        binding.tvVisitorID.text = visitorId
+    }
+
+    private fun applySystemBarsAppearance() {
+        val systemBarColor = Color.parseColor("#0B101F")
+        window.statusBarColor = systemBarColor
+        window.navigationBarColor = systemBarColor
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+        }
     }
 
     fun isKioskModeActive(): Boolean {
