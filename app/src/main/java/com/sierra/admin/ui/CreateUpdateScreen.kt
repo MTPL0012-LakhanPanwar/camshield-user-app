@@ -179,7 +179,7 @@ fun CreateUpdateScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             CustomInputField(label = "Facility Name *", value = name, onValueChange = { name = it })
-            CustomInputField(label = "Description *", value = description, onValueChange = { description = it }, singleLine = false)
+            CustomInputField(label = "Description *", value = description, onValueChange = { description = it }, singleLine = false, maxLines = 3)
 
             // Location Section
             Text("Location", color = CuTextGray, fontSize = 14.sp, fontWeight = FontWeight.Medium)
@@ -318,7 +318,8 @@ fun CustomInputField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
-    singleLine: Boolean = true
+    singleLine: Boolean = true,
+    maxLines: Int = Int.MAX_VALUE
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label, color = CuTextGray, fontSize = 13.sp)
@@ -328,6 +329,7 @@ fun CustomInputField(
             modifier = Modifier.fillMaxWidth(),
             singleLine = singleLine,
             minLines = if (singleLine) 1 else 3,
+            maxLines = maxLines,
             shape = RoundedCornerShape(10.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Color.White,
