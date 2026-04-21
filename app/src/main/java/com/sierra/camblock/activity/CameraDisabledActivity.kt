@@ -4,11 +4,14 @@ import android.app.ActivityManager
 import android.app.Dialog
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.View
 import android.widget.Button
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -42,6 +45,7 @@ class CameraDisabledActivity : AppCompatActivity() {
         restoreVisitorId()
         initFields()
         initClickListeners()
+        requestBatteryOptimizationPermission()
     }
 
     private fun restoreVisitorId() {
@@ -146,5 +150,17 @@ class CameraDisabledActivity : AppCompatActivity() {
             }
         }
     }
-
+    private fun requestBatteryOptimizationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                val intent = Intent(
+                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    Uri.parse("package:$packageName")
+                )
+                startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(this, "Into Exception", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 }
