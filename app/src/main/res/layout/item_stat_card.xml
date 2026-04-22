@@ -15,6 +15,7 @@
         android:textColor="#8A92A6"
         android:textSize="12sp"
         android:textStyle="bold"
+        android:textFontWeight="700"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -36,6 +37,7 @@
         android:textColor="#FFFFFF"
         android:textSize="22sp"
         android:textStyle="bold"
+        android:textFontWeight="700"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tvLabel" />
 

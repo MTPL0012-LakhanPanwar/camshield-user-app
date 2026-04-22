@@ -46,7 +46,8 @@
             android:text="UNLOCKED"
             android:textColor="@color/state_unlocked"
             android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:textFontWeight="700" />
 
         <TextView
             android:id="@+id/tvMainTitle"
@@ -59,7 +60,8 @@
             android:text="SECURE ZONE ACCESS"
             android:textColor="@color/white"
             android:textSize="28sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:textFontWeight="700" />
 
     </LinearLayout>
 

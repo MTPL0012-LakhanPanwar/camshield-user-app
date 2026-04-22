@@ -68,7 +68,8 @@
                         android:text="CamBlock App"
                         android:textColor="#FFFFFF"
                         android:textSize="17sp"
-                        android:textStyle="bold" />
+                        android:textStyle="bold"
+                        android:textFontWeight="700" />
                 </LinearLayout>
 
                 <TextView
@@ -102,7 +103,8 @@
                         android:text="How to Use"
                         android:textColor="#FFFFFF"
                         android:textSize="17sp"
-                        android:textStyle="bold" />
+                        android:textStyle="bold"
+                        android:textFontWeight="700" />
                 </LinearLayout>
 
                 <!-- Step 1 : Entry / Lock -->
@@ -180,7 +182,8 @@
                         android:text="Status Indicators"
                         android:textColor="#FFFFFF"
                         android:textSize="17sp"
-                        android:textStyle="bold" />
+                        android:textStyle="bold"
+                        android:textFontWeight="700" />
                 </LinearLayout>
 
                 <!-- Locked -->
@@ -262,7 +265,8 @@
                         android:text="Required Permissions"
                         android:textColor="#FFFFFF"
                         android:textSize="17sp"
-                        android:textStyle="bold" />
+                        android:textStyle="bold"
+                        android:textFontWeight="700" />
                 </LinearLayout>
 
                 <!-- Device Admin -->
@@ -374,7 +378,8 @@
                         android:text="Troubleshooting"
                         android:textColor="#FFFFFF"
                         android:textSize="17sp"
-                        android:textStyle="bold" />
+                        android:textStyle="bold"
+                        android:textFontWeight="700" />
                 </LinearLayout>
 
                 <TextView
@@ -416,7 +421,8 @@
                         android:text="Need Help?"
                         android:textColor="#FFFFFF"
                         android:textSize="17sp"
-                        android:textStyle="bold" />
+                        android:textStyle="bold"
+                        android:textFontWeight="700" />
                 </LinearLayout>
 
                 <TextView

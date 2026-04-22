@@ -59,7 +59,7 @@
             android:name=".activity.BlockedActivity"
             android:excludeFromRecents="true"
             android:launchMode="singleTop"
-            android:theme="@style/Theme.AppCompat.NoActionBar" />
+            android:theme="@style/Theme.CameraLockDemo.Blocked" />
 
         <service
             android:name=".CameraBlockerService"

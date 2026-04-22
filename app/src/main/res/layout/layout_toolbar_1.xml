@@ -34,7 +34,8 @@
             tools:text="SCAN QR"
             android:textColor="#FFFFFF"
             android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:textFontWeight="700" />
 
         <ImageView
             android:id="@+id/btnHelp"

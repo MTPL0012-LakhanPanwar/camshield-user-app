@@ -20,6 +20,7 @@
         android:text="No Internet Connection"
         android:textSize="20sp"
         android:textStyle="bold"
+        android:textFontWeight="700"
         android:textColor="@color/white"
         android:layout_marginTop="16dp" />
 
