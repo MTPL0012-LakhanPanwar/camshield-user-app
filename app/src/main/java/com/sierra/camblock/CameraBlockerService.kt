@@ -110,6 +110,10 @@ class CameraBlockerService : Service() {
         cameraManager = getSystemService(CAMERA_SERVICE) as CameraManager
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
+        // Promote to foreground as early as possible to satisfy the Android O+
+        // foreground-start time window before any potentially expensive setup.
+        startForegroundService()
+
         // Register Camera Callback
         try {
             cameraManager.registerAvailabilityCallback(cameraCallback, handler)
@@ -119,8 +123,6 @@ class CameraBlockerService : Service() {
 
         prepareOverlayView()
         attachOverlayIfNeeded()
-
-        startForegroundService()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -163,11 +165,21 @@ class CameraBlockerService : Service() {
 
             val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
             val triggerAt = SystemClock.elapsedRealtime() + 800L
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                triggerAt,
-                pendingIntent
-            )
+            try {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    triggerAt,
+                    pendingIntent
+                )
+            } catch (se: SecurityException) {
+                // Android 12+ may restrict exact alarms; fallback keeps recovery alive.
+                alarmManager.setAndAllowWhileIdle(
+                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    triggerAt,
+                    pendingIntent
+                )
+                Log.w(TAG, "Exact alarm denied; using inexact restart", se)
+            }
             Log.w(TAG, "Task removed while locked; scheduled blocker restart")
         } catch (e: Exception) {
             Log.e(TAG, "Failed scheduling restart on task removal", e)

@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -49,6 +50,7 @@ class SplashActivity : AppCompatActivity() {
     private fun ensureBlockerServiceRunningIfLocked() {
         if (!prefsManager.isLocked) return
         if (!allPermissionsGranted()) return
+        if (CameraBlockerService.isServiceRunning) return
 
         try {
             val serviceIntent = Intent(this, CameraBlockerService::class.java)
@@ -57,8 +59,9 @@ class SplashActivity : AppCompatActivity() {
             } else {
                 startService(serviceIntent)
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // Best-effort recovery path for killed service after OEM clear-all.
+            Log.w("SplashActivity", "Recovery: failed to start blocker service", e)
         }
     }
 
