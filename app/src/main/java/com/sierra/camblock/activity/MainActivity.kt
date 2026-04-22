@@ -404,10 +404,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun isServiceRunning(): Boolean {
         return try {
-            if (CameraBlockerService.isServiceRunning) {
-                return true
-            }
-
             val activityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
             val services = activityManager.getRunningServices(Integer.MAX_VALUE)
             for (service in services) {
