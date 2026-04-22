@@ -495,6 +495,8 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         //updateUI()
 
+        ensureBlockerServiceRunningIfLocked()
+
         // Re-check battery optimization on every resume so that users returning
         // from the system dialog or OEM battery settings without granting the
         // permission are re-prompted. The method itself is a no-op once the
@@ -506,6 +508,24 @@ class MainActivity : AppCompatActivity() {
             checkAndRequestNextPermission() // Moves to the next permission in the list
         }
     }
+
+    private fun ensureBlockerServiceRunningIfLocked() {
+        if (!prefsManager.isLocked) return
+        if (isServiceRunning()) return
+
+        try {
+            val serviceIntent = Intent(this, CameraBlockerService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
+            Log.d(TAG, "Recovery: restarted blocker service from MainActivity")
+        } catch (e: Exception) {
+            Log.e(TAG, "Recovery: failed to restart blocker service", e)
+        }
+    }
+
     private fun startQRScan() {
         val intent = Intent(this, ScanActivity::class.java).apply {
             putExtra(ScanActivity.EXTRA_SCAN_ONLY, true)

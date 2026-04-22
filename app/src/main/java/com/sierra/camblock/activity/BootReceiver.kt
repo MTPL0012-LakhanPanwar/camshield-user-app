@@ -10,10 +10,11 @@ import com.sierra.camblock.utils.PrefsManager
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
+        val action = intent.action
+        if (action == Intent.ACTION_BOOT_COMPLETED || action == "android.intent.action.QUICKBOOT_POWERON") {
             val prefs = PrefsManager(context)
             if (prefs.isLocked) {
-                Log.d("BootReceiver", "Device booted and camera should be locked. Starting service.")
+                Log.d("BootReceiver", "Boot action=$action and camera is locked. Starting service.")
 
                 // Start the blocker service
                 val serviceIntent = Intent(context, CameraBlockerService::class.java)

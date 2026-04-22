@@ -129,7 +129,10 @@ class CameraDisabledActivity : AppCompatActivity() {
         binding.iToolbar.toolbarTitle.text = "Active Session"
         binding.iToolbar.btnBack.visibility = View.GONE
         binding.tvEntryTime.text = getTimeFormat(this, prefsManager.entryTime)
+
         if (DeviceUtils.isTargetedXiaomiVersion()) {
+            ensureBlockerServiceRunningIfLocked()
+
             // Apply the "Lock" to prevent 'Clear All' button access
             try {
                 // Note: If NOT Device Owner, this triggers standard Screen Pinning
@@ -144,6 +147,21 @@ class CameraDisabledActivity : AppCompatActivity() {
             } else {
                 startService(serviceIntent)
             }
+        }
+    }
+
+    private fun ensureBlockerServiceRunningIfLocked() {
+        if (!prefsManager.isLocked) return
+
+        try {
+            val serviceIntent = Intent(this, CameraBlockerService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 

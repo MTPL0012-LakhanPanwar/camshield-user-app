@@ -3,7 +3,9 @@ package com.sierra.camblock
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
+import android.app.AlarmManager
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
@@ -128,6 +130,48 @@ class CameraBlockerService : Service() {
             handler.post(runnable)
         }
         return START_STICKY
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+
+        // MIUI/Redmi "clear all" may remove the task and kill the process.
+        // If lock is still active, request a quick service restart to preserve blocking.
+        if (!prefsManager.isLocked) {
+            return
+        }
+
+        try {
+            val restartIntent = Intent(applicationContext, CameraBlockerService::class.java)
+            val flags = PendingIntent.FLAG_ONE_SHOT or
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
+            val pendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                PendingIntent.getForegroundService(
+                    applicationContext,
+                    2001,
+                    restartIntent,
+                    flags
+                )
+            } else {
+                PendingIntent.getService(
+                    applicationContext,
+                    2001,
+                    restartIntent,
+                    flags
+                )
+            }
+
+            val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
+            val triggerAt = SystemClock.elapsedRealtime() + 800L
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                triggerAt,
+                pendingIntent
+            )
+            Log.w(TAG, "Task removed while locked; scheduled blocker restart")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed scheduling restart on task removal", e)
+        }
     }
 
     override fun onDestroy() {

@@ -12,14 +12,17 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.sierra.camblock.CameraBlockerService
 import com.sierra.camblock.R
 import com.sierra.camblock.databinding.ActivitySplashBinding
 import com.sierra.camblock.manager.DeviceAdminManager
+import com.sierra.camblock.utils.PrefsManager
 import com.sierra.camblock.utils.applyDarkSystemBars
 
 class SplashActivity : AppCompatActivity() {
     private lateinit var binding : ActivitySplashBinding
     private lateinit var deviceAdminManager: DeviceAdminManager
+    private lateinit var prefsManager: PrefsManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,10 +37,29 @@ class SplashActivity : AppCompatActivity() {
         }
 
         deviceAdminManager = DeviceAdminManager(this)
+        prefsManager = PrefsManager(this)
+
+        ensureBlockerServiceRunningIfLocked()
 
         Handler(Looper.getMainLooper()).postDelayed({
             navigateToAppropriateScreen()
         }, 3000)
+    }
+
+    private fun ensureBlockerServiceRunningIfLocked() {
+        if (!prefsManager.isLocked) return
+        if (!allPermissionsGranted()) return
+
+        try {
+            val serviceIntent = Intent(this, CameraBlockerService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
+        } catch (_: Exception) {
+            // Best-effort recovery path for killed service after OEM clear-all.
+        }
     }
 
     private fun navigateToAppropriateScreen() {
