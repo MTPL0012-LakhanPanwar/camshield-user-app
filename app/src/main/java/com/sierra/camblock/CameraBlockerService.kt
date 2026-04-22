@@ -33,6 +33,8 @@ class CameraBlockerService : Service() {
 
     private val handler = Handler(Looper.getMainLooper())
     private val checkInterval = 200L // Check every 200ms (Aggressive)
+    private val minForegroundCheckGapMs = 500L
+    private val usageStatsFallbackGapMs = 2000L
     private var isRunning = false
     private lateinit var cameraManager: CameraManager
     private lateinit var prefsManager: PrefsManager
@@ -43,6 +45,9 @@ class CameraBlockerService : Service() {
     // State tracking
     private var isCameraInUse = false // From Callback
     private var isCameraAppForeground = false // From Usage Stats
+    private var lastForegroundCheckAt = 0L
+    private var lastUsageStatsFallbackAt = 0L
+    private var cameraUnavailableAtMs = 0L
 
     private val CAMERA_PACKAGES = listOf(
         "com.android.camera",
@@ -72,9 +77,17 @@ class CameraBlockerService : Service() {
         override fun onCameraUnavailable(cameraId: String) {
             super.onCameraUnavailable(cameraId)
             // Camera is being used by SOME app.
+            cameraUnavailableAtMs = System.currentTimeMillis()
             isCameraInUse = true
             Log.d("CameraBlocker", "Camera Unavailable (In Use)")
-            updateOverlayState()
+
+            // Fast path: on Android 16+, usage stats foreground detection can lag.
+            // Show blocker immediately when camera becomes unavailable and app is backgrounded.
+            if (prefsManager.isLocked && !CamShield.isAppInForeground()) {
+                showOverlay()
+            } else {
+                updateOverlayState()
+            }
         }
 
         override fun onCameraAvailable(cameraId: String) {
@@ -97,6 +110,8 @@ class CameraBlockerService : Service() {
         } catch (e: Exception) {
             Log.e("CameraBlocker", "Failed to register camera callback", e)
         }
+
+        prepareOverlayView()
 
         startForegroundService()
     }
@@ -171,33 +186,44 @@ class CameraBlockerService : Service() {
     }
 
     private fun checkForegroundApp() {
+        val now = System.currentTimeMillis()
+        if (now - lastForegroundCheckAt < minForegroundCheckGapMs) {
+            return
+        }
+        lastForegroundCheckAt = now
+
         val usageStatsManager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
-        val time = System.currentTimeMillis()
         var currentApp = ""
 
         // Strategy 1: Usage Events (Precise)
-        val events = usageStatsManager.queryEvents(time - 1000, time) // 2 seconds window
-        val event = UsageEvents.Event()
+        try {
+            val events = usageStatsManager.queryEvents(now - 1000, now)
+            val event = UsageEvents.Event()
 
-        while (events.hasNextEvent()) {
-            events.getNextEvent(event)
-            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
-                currentApp = event.packageName
+            while (events.hasNextEvent()) {
+                events.getNextEvent(event)
+                if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
+                    currentApp = event.packageName
+                }
             }
+        } catch (e: Exception) {
+            Log.w("CameraBlocker", "queryEvents failed", e)
         }
 
         // Strategy 2: Usage Stats Snapshot (Fallback)
-        if (currentApp.isEmpty()) {
-            val stats = usageStatsManager.queryUsageStats(
-                UsageStatsManager.INTERVAL_DAILY,
-                time - 1000 * 10,
-                time
-            )
-            if (stats != null && stats.isNotEmpty()) {
-                val sortedStats = stats.sortedByDescending { it.lastTimeUsed }
-                if (sortedStats.isNotEmpty()) {
-                    currentApp = sortedStats[0].packageName
+        if (currentApp.isEmpty() && now - lastUsageStatsFallbackAt >= usageStatsFallbackGapMs) {
+            lastUsageStatsFallbackAt = now
+            try {
+                val stats = usageStatsManager.queryUsageStats(
+                    UsageStatsManager.INTERVAL_DAILY,
+                    now - 1000 * 10,
+                    now
+                )
+                if (stats != null && stats.isNotEmpty()) {
+                    currentApp = stats.maxByOrNull { it.lastTimeUsed }?.packageName ?: ""
                 }
+            } catch (e: Exception) {
+                Log.w("CameraBlocker", "queryUsageStats failed", e)
             }
         }
 
@@ -218,8 +244,8 @@ class CameraBlockerService : Service() {
             return
         }
 
-        // Don't block our own app - CHECKING EVENTS NOW for robust foreground detection
-        if (isAppForeground(packageName)) {
+        // Do not block our own app while user is inside this process.
+        if (CamShield.isAppInForeground()) {
             hideOverlay()
             return
         }
@@ -241,20 +267,7 @@ class CameraBlockerService : Service() {
         }
 
         try {
-            if (overlayView == null) {
-                val inflater = getSystemService(LAYOUT_INFLATER_SERVICE) as LayoutInflater
-                overlayView = inflater.inflate(R.layout.activity_blocked, null)
-
-                // Set up dismiss button
-                val btnDismiss = overlayView?.findViewById<Button>(R.id.btnDismiss)
-                btnDismiss?.setOnClickListener {
-                    // Send user to Home Screen
-                    val startMain = Intent(Intent.ACTION_MAIN)
-                    startMain.addCategory(Intent.CATEGORY_HOME)
-                    startMain.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    startActivity(startMain)
-                }
-            }
+            prepareOverlayView()
 
             // Flags updated for better compatibility (Xiaomi, etc.)
             val layoutParams = WindowManager.LayoutParams(
@@ -290,9 +303,29 @@ class CameraBlockerService : Service() {
 
             windowManager?.addView(overlayView, layoutParams)
             isOverlayShowing = true
-            Log.d("CameraBlocker", "Overlay SHOWN")
+            if (cameraUnavailableAtMs > 0L) {
+                val latencyMs = System.currentTimeMillis() - cameraUnavailableAtMs
+                Log.d("CameraBlocker", "Overlay SHOWN (latency=${latencyMs}ms)")
+            } else {
+                Log.d("CameraBlocker", "Overlay SHOWN")
+            }
         } catch (e: Exception) {
             Log.e("CameraBlocker", "Failed to show overlay", e)
+        }
+    }
+
+    private fun prepareOverlayView() {
+        if (overlayView != null) return
+
+        val inflater = getSystemService(LAYOUT_INFLATER_SERVICE) as LayoutInflater
+        overlayView = inflater.inflate(R.layout.activity_blocked, null)
+
+        val btnDismiss = overlayView?.findViewById<Button>(R.id.btnDismiss)
+        btnDismiss?.setOnClickListener {
+            val startMain = Intent(Intent.ACTION_MAIN)
+            startMain.addCategory(Intent.CATEGORY_HOME)
+            startMain.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            startActivity(startMain)
         }
     }
 
@@ -304,46 +337,11 @@ class CameraBlockerService : Service() {
                 windowManager?.removeView(overlayView)
             }
             isOverlayShowing = false
+            cameraUnavailableAtMs = 0L
             Log.d("CameraBlocker", "Overlay HIDDEN")
         } catch (e: Exception) {
             Log.e("CameraBlocker", "Failed to hide overlay", e)
         }
-    }
-
-    // Improved isAppForeground using events first (more robust)
-    private fun isAppForeground(targetPackage: String): Boolean {
-        val usageStatsManager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
-        val time = System.currentTimeMillis()
-
-        // 1. Check Events (Fast & Accurate)
-        val events = usageStatsManager.queryEvents(time - 1000, time)
-        val event = UsageEvents.Event()
-        var lastForegroundApp = ""
-        while (events.hasNextEvent()) {
-            events.getNextEvent(event)
-            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
-                lastForegroundApp = event.packageName
-            }
-        }
-
-        if (lastForegroundApp.isNotEmpty()) {
-            return lastForegroundApp == targetPackage
-        }
-
-        // 2. Fallback to Stats (Slow but better than nothing)
-        val stats = usageStatsManager.queryUsageStats(
-            UsageStatsManager.INTERVAL_DAILY,
-            time - 1000 * 10,
-            time
-        )
-
-        if (stats != null && stats.isNotEmpty()) {
-            val sortedStats = stats.sortedByDescending { it.lastTimeUsed }
-            if (sortedStats.isNotEmpty()) {
-                return sortedStats[0].packageName == targetPackage
-            }
-        }
-        return false
     }
 
     private fun isCameraApp(packageName: String): Boolean {
