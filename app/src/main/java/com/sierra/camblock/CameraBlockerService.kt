@@ -15,6 +15,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
@@ -28,6 +29,7 @@ import com.sierra.camblock.utils.PrefsManager
 class CameraBlockerService : Service() {
 
     companion object {
+        private const val TAG = "CameraBlocker"
         var isServiceRunning = false
     }
 
@@ -40,6 +42,8 @@ class CameraBlockerService : Service() {
     private lateinit var prefsManager: PrefsManager
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
+    private var overlayLayoutParams: WindowManager.LayoutParams? = null
+    private var isOverlayAttached = false
     private var isOverlayShowing = false
 
     // State tracking
@@ -79,12 +83,12 @@ class CameraBlockerService : Service() {
             // Camera is being used by SOME app.
             cameraUnavailableAtMs = System.currentTimeMillis()
             isCameraInUse = true
-            Log.d("CameraBlocker", "Camera Unavailable (In Use)")
+            Log.d(TAG, "Camera Unavailable (In Use)")
 
             // Fast path: on Android 16+, usage stats foreground detection can lag.
             // Show blocker immediately when camera becomes unavailable and app is backgrounded.
             if (prefsManager.isLocked && !CamShield.isAppInForeground()) {
-                showOverlay()
+                showOverlay("camera_callback_fast_path")
             } else {
                 updateOverlayState()
             }
@@ -108,10 +112,11 @@ class CameraBlockerService : Service() {
         try {
             cameraManager.registerAvailabilityCallback(cameraCallback, handler)
         } catch (e: Exception) {
-            Log.e("CameraBlocker", "Failed to register camera callback", e)
+            Log.e(TAG, "Failed to register camera callback", e)
         }
 
         prepareOverlayView()
+        attachOverlayIfNeeded()
 
         startForegroundService()
     }
@@ -130,10 +135,21 @@ class CameraBlockerService : Service() {
         isServiceRunning = false
         handler.removeCallbacks(runnable)
         hideOverlay() // Ensure overlay is removed
+
+        try {
+            if (isOverlayAttached && overlayView != null && windowManager != null) {
+                windowManager?.removeViewImmediate(overlayView)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fully detach overlay", e)
+        }
+        isOverlayAttached = false
+        overlayLayoutParams = null
+
         try {
             cameraManager.unregisterAvailabilityCallback(cameraCallback)
         } catch (e: Exception) {
-            Log.e("CameraBlocker", "Failed to unregister camera callback", e)
+            Log.e(TAG, "Failed to unregister camera callback", e)
         }
         super.onDestroy()
     }
@@ -178,7 +194,7 @@ class CameraBlockerService : Service() {
                 startForeground(1, notification)
             }
         } catch (e: Exception) {
-            Log.e("CameraBlocker", "startForeground failed", e)
+            Log.e(TAG, "startForeground failed", e)
             // Stop self so the system does not keep the service in a half-started
             // state that would trigger ForegroundServiceDidNotStartInTimeException.
             stopSelf()
@@ -194,6 +210,13 @@ class CameraBlockerService : Service() {
 
         val usageStatsManager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
         var currentApp = ""
+        var lastEventTimestamp = 0L
+        var detectionSource = "none"
+        var eventAgeMs = -1L
+
+        val queryEventsStart = SystemClock.elapsedRealtime()
+        var queryEventsCostMs = 0L
+        var queryUsageStatsCostMs = -1L
 
         // Strategy 1: Usage Events (Precise)
         try {
@@ -204,15 +227,22 @@ class CameraBlockerService : Service() {
                 events.getNextEvent(event)
                 if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
                     currentApp = event.packageName
+                    lastEventTimestamp = event.timeStamp
                 }
             }
         } catch (e: Exception) {
-            Log.w("CameraBlocker", "queryEvents failed", e)
+            Log.w(TAG, "queryEvents failed", e)
+        }
+        queryEventsCostMs = SystemClock.elapsedRealtime() - queryEventsStart
+        if (currentApp.isNotEmpty() && lastEventTimestamp > 0L) {
+            detectionSource = "queryEvents"
+            eventAgeMs = now - lastEventTimestamp
         }
 
         // Strategy 2: Usage Stats Snapshot (Fallback)
         if (currentApp.isEmpty() && now - lastUsageStatsFallbackAt >= usageStatsFallbackGapMs) {
             lastUsageStatsFallbackAt = now
+            val queryUsageStatsStart = SystemClock.elapsedRealtime()
             try {
                 val stats = usageStatsManager.queryUsageStats(
                     UsageStatsManager.INTERVAL_DAILY,
@@ -220,11 +250,17 @@ class CameraBlockerService : Service() {
                     now
                 )
                 if (stats != null && stats.isNotEmpty()) {
-                    currentApp = stats.maxByOrNull { it.lastTimeUsed }?.packageName ?: ""
+                    val latest = stats.maxByOrNull { it.lastTimeUsed }
+                    currentApp = latest?.packageName ?: ""
+                    if (latest != null) {
+                        detectionSource = "queryUsageStats"
+                        eventAgeMs = now - latest.lastTimeUsed
+                    }
                 }
             } catch (e: Exception) {
-                Log.w("CameraBlocker", "queryUsageStats failed", e)
+                Log.w(TAG, "queryUsageStats failed", e)
             }
+            queryUsageStatsCostMs = SystemClock.elapsedRealtime() - queryUsageStatsStart
         }
 
         if (currentApp.isNotEmpty()) {
@@ -233,84 +269,89 @@ class CameraBlockerService : Service() {
             isCameraAppForeground = isCameraApp(currentApp)
 
             if (wasForeground != isCameraAppForeground) {
-                Log.d("CameraBlocker", "Foreground App Changed: $currentApp (IsCameraApp: $isCameraAppForeground)")
+                Log.d(
+                    TAG,
+                    "Foreground App Changed: $currentApp (IsCameraApp: $isCameraAppForeground, source=$detectionSource, eventAge=${eventAgeMs}ms, queryEvents=${queryEventsCostMs}ms, queryStats=${queryUsageStatsCostMs}ms)"
+                )
             }
         }
     }
 
     private fun updateOverlayState() {
         if (!prefsManager.isLocked) {
-            hideOverlay()
+            if (isOverlayShowing) {
+                hideOverlay("not_locked")
+            }
             return
         }
 
         // Do not block our own app while user is inside this process.
         if (CamShield.isAppInForeground()) {
-            hideOverlay()
+            if (isOverlayShowing) {
+                hideOverlay("own_app_foreground")
+            }
             return
         }
 
         if (isCameraInUse || isCameraAppForeground) {
-            showOverlay()
+            if (!isOverlayShowing) {
+                showOverlay("state_eval cameraInUse=$isCameraInUse cameraForeground=$isCameraAppForeground")
+            }
         } else {
-            hideOverlay()
+            if (isOverlayShowing) {
+                hideOverlay("camera_not_in_use")
+            }
         }
     }
 
-    private fun showOverlay() {
-        if (isOverlayShowing) return
+    private fun showOverlay(reason: String) {
+        if (isOverlayShowing) {
+            return
+        }
 
         // Double check Overlay Permission
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-            Log.e("CameraBlocker", "Cannot show overlay: Permission missing")
+            Log.e(TAG, "Cannot show overlay: Permission missing")
             return
         }
 
         try {
             prepareOverlayView()
 
-            // Flags updated for better compatibility (Xiaomi, etc.)
-            val layoutParams = WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT,
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                else
-                    WindowManager.LayoutParams.TYPE_PHONE,
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
-                        WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or // Allow extending outside screen
-                        WindowManager.LayoutParams.FLAG_FULLSCREEN,         // Request full screen
-                PixelFormat.TRANSLUCENT
-            )
-
-            // Handle Display Cutout (Notch)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                layoutParams.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            if (!isOverlayAttached) {
+                attachOverlayIfNeeded()
             }
 
-            layoutParams.gravity = Gravity.CENTER
+            val view = overlayView ?: return
+            val params = overlayLayoutParams ?: createOverlayLayoutParams(interactive = true).also {
+                overlayLayoutParams = it
+            }
 
-            // Hide System UI (Immersive Mode)
-            overlayView?.systemUiVisibility = (View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
-                    or View.SYSTEM_UI_FLAG_FULLSCREEN // hide status bar
-                    or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
+            params.flags = buildOverlayFlags(interactive = true)
+            view.visibility = View.VISIBLE
+            view.alpha = 1f
+            view.invalidate()
 
-            windowManager?.addView(overlayView, layoutParams)
+            val wmStart = SystemClock.elapsedRealtime()
+            if (isOverlayAttached) {
+                windowManager?.updateViewLayout(view, params)
+            } else {
+                windowManager?.addView(view, params)
+                isOverlayAttached = true
+            }
+            val wmCostMs = SystemClock.elapsedRealtime() - wmStart
+
             isOverlayShowing = true
+
             if (cameraUnavailableAtMs > 0L) {
                 val latencyMs = System.currentTimeMillis() - cameraUnavailableAtMs
-                Log.d("CameraBlocker", "Overlay SHOWN (latency=${latencyMs}ms)")
+                Log.d(TAG, "Overlay SHOWN (latency=${latencyMs}ms, wm=${wmCostMs}ms, reason=$reason)")
             } else {
-                Log.d("CameraBlocker", "Overlay SHOWN")
+                Log.d(TAG, "Overlay SHOWN (wm=${wmCostMs}ms, reason=$reason)")
             }
         } catch (e: Exception) {
-            Log.e("CameraBlocker", "Failed to show overlay", e)
+            isOverlayAttached = false
+            Log.e(TAG, "Failed to show overlay", e)
         }
     }
 
@@ -319,6 +360,9 @@ class CameraBlockerService : Service() {
 
         val inflater = getSystemService(LAYOUT_INFLATER_SERVICE) as LayoutInflater
         overlayView = inflater.inflate(R.layout.activity_blocked, null)
+        overlayView?.isClickable = true
+        overlayView?.isFocusable = true
+        overlayView?.isFocusableInTouchMode = true
 
         val btnDismiss = overlayView?.findViewById<Button>(R.id.btnDismiss)
         btnDismiss?.setOnClickListener {
@@ -329,18 +373,98 @@ class CameraBlockerService : Service() {
         }
     }
 
+    private fun attachOverlayIfNeeded() {
+        if (isOverlayAttached) return
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            Log.e(TAG, "Cannot pre-attach overlay: Permission missing")
+            return
+        }
+
+        val view = overlayView ?: return
+
+        try {
+            val params = createOverlayLayoutParams(interactive = false)
+            overlayLayoutParams = params
+            view.visibility = View.VISIBLE
+            view.alpha = 0f
+
+            val wmStart = SystemClock.elapsedRealtime()
+            windowManager?.addView(view, params)
+            val wmCostMs = SystemClock.elapsedRealtime() - wmStart
+
+            isOverlayAttached = true
+            Log.d(TAG, "Overlay pre-attached hidden (wm=${wmCostMs}ms)")
+        } catch (e: Exception) {
+            isOverlayAttached = false
+            Log.e(TAG, "Failed to pre-attach overlay", e)
+        }
+    }
+
+    private fun createOverlayLayoutParams(interactive: Boolean): WindowManager.LayoutParams {
+        val layoutParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            else
+                WindowManager.LayoutParams.TYPE_PHONE,
+            buildOverlayFlags(interactive),
+            PixelFormat.TRANSLUCENT
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            layoutParams.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Fill the full display bounds including system bar areas.
+            layoutParams.setFitInsetsTypes(0)
+            layoutParams.setFitInsetsSides(0)
+            layoutParams.setFitInsetsIgnoringVisibility(true)
+        }
+
+        layoutParams.gravity = Gravity.TOP or Gravity.START
+        return layoutParams
+    }
+
+    private fun buildOverlayFlags(interactive: Boolean): Int {
+        var flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+
+        if (!interactive) {
+            flags = flags or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        }
+
+        return flags
+    }
+
     private fun hideOverlay() {
+        hideOverlay("unknown")
+    }
+
+    private fun hideOverlay(reason: String) {
         if (!isOverlayShowing) return
 
         try {
-            if (overlayView != null && windowManager != null) {
-                windowManager?.removeView(overlayView)
+            val view = overlayView
+            val params = overlayLayoutParams
+            if (view != null && params != null && windowManager != null && isOverlayAttached) {
+                params.flags = buildOverlayFlags(interactive = false)
+                view.visibility = View.VISIBLE
+                view.alpha = 0f
+                windowManager?.updateViewLayout(view, params)
             }
             isOverlayShowing = false
             cameraUnavailableAtMs = 0L
-            Log.d("CameraBlocker", "Overlay HIDDEN")
+            Log.d(TAG, "Overlay HIDDEN (reason=$reason)")
         } catch (e: Exception) {
-            Log.e("CameraBlocker", "Failed to hide overlay", e)
+            Log.e(TAG, "Failed to hide overlay", e)
         }
     }
 
