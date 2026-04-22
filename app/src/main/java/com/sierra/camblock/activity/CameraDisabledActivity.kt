@@ -152,6 +152,7 @@ class CameraDisabledActivity : AppCompatActivity() {
 
     private fun ensureBlockerServiceRunningIfLocked() {
         if (!prefsManager.isLocked) return
+        if (CameraBlockerService.isServiceRunning) return
 
         try {
             val serviceIntent = Intent(this, CameraBlockerService::class.java)
