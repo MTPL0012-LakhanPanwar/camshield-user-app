@@ -26,6 +26,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import androidx.core.app.NotificationCompat
+import com.sierra.camblock.activity.CameraDisabledActivity
 import com.sierra.camblock.utils.PrefsManager
 
 class CameraBlockerService : Service() {
@@ -54,6 +55,10 @@ class CameraBlockerService : Service() {
     private var lastForegroundCheckAt = 0L
     private var lastUsageStatsFallbackAt = 0L
     private var cameraUnavailableAtMs = 0L
+    private var lastSettingsInterceptionAtMs = 0L
+    private var isSettingsInterceptionInProgress = false
+
+    private val settingsInterceptionCooldownMs = 1800L
 
     private val CAMERA_PACKAGES = listOf(
         "com.android.camera",
@@ -68,6 +73,28 @@ class CameraBlockerService : Service() {
         "com.asus.camera",
         "com.sonyericsson.android.camera",
         "org.codeaurora.snapcam"
+    )
+
+    private val SETTINGS_PACKAGES = setOf(
+        "com.android.settings",
+        "com.android.permissioncontroller",
+        "com.google.android.permissioncontroller",
+        "com.oneplus.security",
+        "com.oneplus.securitychain",
+        "com.samsung.android.app.settings",
+        "com.sec.android.app.settings",
+        "com.miui.securitycenter",
+        "com.miui.permcenter",
+        "com.oppo.safe",
+        "com.coloros.safecenter",
+        "com.coloros.securitypermission",
+        "com.oplus.safecenter",
+        "com.oplus.securitypermission",
+        "com.oplus.permissionmanager",
+        "com.vivo.permissionmanager",
+        "com.realme.securitycheck",
+        "com.realme.securepay",
+        "com.huawei.systemmanager"
     )
 
     private val runnable = object : Runnable {
@@ -324,6 +351,13 @@ class CameraBlockerService : Service() {
         }
 
         if (currentApp.isNotEmpty()) {
+            val hasFreshForegroundSignal =
+                detectionSource == "queryEvents" ||
+                        (eventAgeMs >= 0 && eventAgeMs <= 2000L)
+            if (hasFreshForegroundSignal) {
+                detectAndWarnSettingsAccess(currentApp)
+            }
+
             // Update state
             val wasForeground = isCameraAppForeground
             isCameraAppForeground = isCameraApp(currentApp)
@@ -335,6 +369,68 @@ class CameraBlockerService : Service() {
                 )
             }
         }
+    }
+
+    private fun detectAndWarnSettingsAccess(packageName: String) {
+        if (!prefsManager.isLocked) return
+        if (!isSettingsAppInForeground(packageName)) return
+        if (CamShield.isAppInForeground()) return
+
+        val now = SystemClock.elapsedRealtime()
+        if (isSettingsInterceptionInProgress ||
+            now - lastSettingsInterceptionAtMs < settingsInterceptionCooldownMs
+        ) {
+            return
+        }
+
+        isSettingsInterceptionInProgress = true
+        lastSettingsInterceptionAtMs = now
+        Log.w(TAG, "Blocked settings access while locked: $packageName")
+
+        try {
+            val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_HOME)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            startActivity(homeIntent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to move to Home while intercepting settings", e)
+        }
+
+        handler.postDelayed({
+            try {
+                val disableIntent = Intent(this, CameraDisabledActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    putExtra(CameraDisabledActivity.EXTRA_SHOW_TOAST, true)
+                }
+                startActivity(disableIntent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to relaunch CameraDisabledActivity after settings interception", e)
+            } finally {
+                // Keep a short hold before resetting, preventing rapid relaunch loops.
+                handler.postDelayed({
+                    isSettingsInterceptionInProgress = false
+                }, 800L)
+            }
+        }, 300L)
+    }
+
+    private fun isSettingsAppInForeground(packageName: String): Boolean {
+        if (packageName.isEmpty()) return false
+        if (packageName == applicationContext.packageName) return false
+
+        if (SETTINGS_PACKAGES.contains(packageName)) return true
+
+        if (packageName.contains("settings", ignoreCase = true)) {
+            return true
+        }
+
+        return packageName.contains("permission", ignoreCase = true) &&
+                (packageName.contains("manager", ignoreCase = true) ||
+                        packageName.contains("center", ignoreCase = true) ||
+                        packageName.contains("controller", ignoreCase = true))
     }
 
     private fun updateOverlayState() {
