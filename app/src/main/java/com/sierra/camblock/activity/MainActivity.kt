@@ -39,6 +39,7 @@ import com.sierra.camblock.databinding.ActivityMainBinding
 import com.sierra.camblock.manager.DeviceAdminManager
 import com.sierra.camblock.utils.Constants
 import com.sierra.camblock.utils.DeviceUtils
+import com.sierra.camblock.utils.LoginNavigation
 import com.sierra.camblock.utils.PrefsManager
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
@@ -350,6 +351,9 @@ class MainActivity : AppCompatActivity() {
                 currentScanAction = ScanAction.EXIT
                 startQRScan()
             }
+        }
+        binding.tvAdminLogin.setOnClickListener {
+            LoginNavigation.showLoginConfirmation(this)
         }
         binding.iToolbar.btnHelp.setOnClickListener {
             startActivity(Intent(this, HelpActivity::class.java))
