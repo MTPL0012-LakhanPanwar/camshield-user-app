@@ -29,6 +29,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import com.sierra.admin.activity.LoginActivity
 import com.sierra.camblock.CameraBlockerService
 import com.sierra.camblock.R
 import com.sierra.camblock.api.RetrofitClient
@@ -129,7 +130,9 @@ class MainActivity : AppCompatActivity() {
         // Initialize managers
         deviceAdminManager = DeviceAdminManager(this)
         prefsManager = PrefsManager(this)
-
+        binding.ivStatusIcon.setOnClickListener{
+            startActivity(Intent(this, LoginActivity::class.java))
+        }
         applySystemBarsAppearance()
         setupWindowInsets()
         setupClickListeners()

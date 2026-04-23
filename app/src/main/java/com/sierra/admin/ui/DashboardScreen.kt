@@ -51,8 +51,8 @@ private val DsTextGray = Color(0xFF8A92A6)
 
 sealed class DashboardTab(val route: String, val icon: ImageVector, val title: String) {
     object Facilities : DashboardTab("tab_facilities", Icons.Default.Business, "Facilities")
-    object Devices : DashboardTab("tab_devices", Icons.Default.ExitToApp, "Force Exit")
-    object Admins : DashboardTab("tab_admins", Icons.Default.People, "Admins")
+    object Devices : DashboardTab("tab_devices", Icons.Default.ExitToApp, "Active Devices")
+    object Admins : DashboardTab("tab_admins", Icons.Default.People, "Exit Requests")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

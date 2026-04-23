@@ -2,6 +2,9 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'org.jetbrains.kotlin.plugin.compose'
+    // Add the Google services Gradle plugin
+    id 'com.google.gms.google-services'
+
 }
 
 android {
@@ -137,4 +140,13 @@ dependencies {
     implementation 'androidx.compose.material:material'
     implementation 'androidx.compose.material:material-icons-extended'
     implementation 'androidx.compose.ui:ui-tooling-preview'
+
+    // Import the Firebase BoM
+    implementation platform('com.google.firebase:firebase-bom:34.12.0')
+
+    // Add Cloud Messaging (no version needed because of the BoM)
+    implementation("com.google.firebase:firebase-messaging")
+
+    // Recommended: Add Analytics for message reporting
+    implementation("com.google.firebase:firebase-analytics")
 }

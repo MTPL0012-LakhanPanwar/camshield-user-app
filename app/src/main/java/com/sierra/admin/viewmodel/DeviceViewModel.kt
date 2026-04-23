@@ -74,13 +74,6 @@ class DeviceViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun forceExit(deviceId: String, reason: String, initiatedBy: String) {
-        viewModelScope.launch {
-            _forceExitState.value = ApiResult.Loading
-            _forceExitState.value = api.forceExit(deviceId, reason, initiatedBy)
-        }
-    }
-
     fun resetForceExit() { _forceExitState.value = null }
     fun resetEnrollment() { _enrollmentState.value = null }
 }

@@ -9,9 +9,14 @@ import com.sierra.admin.modal.AuthResponse
 import com.sierra.admin.modal.Coordinates
 import com.sierra.admin.modal.DeviceInfo
 import com.sierra.admin.modal.EnrollmentDetail
+import com.sierra.admin.modal.ExitRequest
+import com.sierra.admin.modal.ExitRequestListResponse
+import com.sierra.admin.modal.ExitRequestResponse
+import com.sierra.admin.modal.ExitRequestStatusResponse
+import com.sierra.admin.modal.ApproveExitRequestRequest
+import com.sierra.admin.modal.DenyExitRequestRequest
 import com.sierra.admin.modal.FacilityCreateResponse
 import com.sierra.admin.modal.FacilityData
-import com.sierra.admin.modal.ForceExitResponse
 import com.sierra.admin.modal.LocationData
 import com.sierra.admin.modal.PaginatedData
 import com.sierra.admin.modal.QRData
@@ -166,15 +171,74 @@ class ApiService(context: Context) {
         } else ApiResult.Error(extractMessage(json), code)
     }
 
-    suspend fun forceExit(deviceId: String, reason: String, initiatedBy: String): ApiResult<ForceExitResponse> {
-        val body = JSONObject().put("reason", reason).put("initiatedBy", initiatedBy)
-        val (code, json) = client.post("/api/admin/devices/$deviceId/force-exit", body)
+    // ─── Exit Requests ─────────────────────────────────────────────────────────
+    suspend fun getForceExitRequests(
+        page: Int = 1,
+        limit: Int = 20,
+        status: String = "",
+        facilityId: String = "",
+        search: String = ""
+    ): ApiResult<ExitRequestListResponse> {
+        var path = "/api/admin/force-exit-requests?page=$page&limit=$limit"
+        if (status.isNotBlank()) path += "&status=${encode(status)}"
+        if (facilityId.isNotBlank()) path += "&facilityId=${encode(facilityId)}"
+        if (search.isNotBlank()) path += "&search=${encode(search)}"
+        
+        val (code, json) = client.get(path)
         return if (code == 200 && json != null) {
             val data = json.getJSONObject("data")
-            ApiResult.Success(ForceExitResponse(
-                action = data.optString("action"),
-                enrollmentId = data.optString("enrollmentId"),
+            val arr = data.getJSONArray("items")
+            ApiResult.Success(ExitRequestListResponse(
+                items = (0 until arr.length()).map { parseExitRequest(arr.getJSONObject(it)) },
+                page = data.optInt("page", page),
+                limit = data.optInt("limit", limit),
+                total = data.optInt("total", 0),
+                totalPages = data.optInt("totalPages", 1),
+                counts = data.optJSONObject("counts")?.let { parseStatusCounts(it) } ?: StatusCounts(0, 0, 0, 0)
+            ))
+        } else ApiResult.Error(extractMessage(json), code)
+    }
+
+    suspend fun getForceExitRequest(requestId: String): ApiResult<ExitRequestStatusResponse> {
+        val (code, json) = client.get("/api/admin/force-exit-requests/$requestId")
+        return if (code == 200 && json != null) {
+            ApiResult.Success(parseExitRequestStatus(json.getJSONObject("data")))
+        } else ApiResult.Error(extractMessage(json), code)
+    }
+
+    suspend fun approveForceExitRequest(requestId: String, adminNotes: String): ApiResult<ExitRequestResponse> {
+        val body = JSONObject().put("adminNotes", adminNotes)
+        val (code, json) = client.post("/api/admin/force-exit-requests/$requestId/approve", body)
+        return if (code == 200 && json != null) {
+            val data = json.getJSONObject("data")
+            ApiResult.Success(ExitRequestResponse(
+                requestId = data.optString("requestId"),
+                status = data.optString("status"),
+                processedAt = data.optString("processedAt").takeIf { it.isNotBlank() },
+                pushNotificationSent = data.optBoolean("pushNotificationSent"),
                 pushSent = data.optBoolean("pushSent"),
+                firebasePushSent = data.optBoolean("firebasePushSent"),
+                pushService = data.optString("pushService").takeIf { it.isNotBlank() },
+                device = data.optJSONObject("device")?.let { parseDevicePushInfo(it) } ?: DevicePushInfo("", false),
+                restoreToken = data.optString("restoreToken").takeIf { it.isNotBlank() }
+            ))
+        } else ApiResult.Error(extractMessage(json), code)
+    }
+
+    suspend fun denyForceExitRequest(requestId: String, adminNotes: String): ApiResult<ExitRequestResponse> {
+        val body = JSONObject().put("adminNotes", adminNotes)
+        val (code, json) = client.post("/api/admin/force-exit-requests/$requestId/deny", body)
+        return if (code == 200 && json != null) {
+            val data = json.getJSONObject("data")
+            ApiResult.Success(ExitRequestResponse(
+                requestId = data.optString("requestId"),
+                status = data.optString("status"),
+                processedAt = data.optString("processedAt").takeIf { it.isNotBlank() },
+                pushNotificationSent = data.optBoolean("pushNotificationSent"),
+                pushSent = data.optBoolean("pushSent"),
+                firebasePushSent = data.optBoolean("firebasePushSent"),
+                pushService = data.optString("pushService").takeIf { it.isNotBlank() },
+                device = data.optJSONObject("device")?.let { parseDevicePushInfo(it) } ?: DevicePushInfo("", false),
                 restoreToken = data.optString("restoreToken").takeIf { it.isNotBlank() }
             ))
         } else ApiResult.Error(extractMessage(json), code)
@@ -338,4 +402,78 @@ class ApiService(context: Context) {
         put("timezone", timezone)
         put("status", status)
     }
+
+    // ─── Exit Request Parsers ─────────────────────────────────────────────────────
+    private fun parseExitRequest(obj: JSONObject): ExitRequest {
+        return ExitRequest(
+            requestId = obj.optString("requestId"),
+            status = obj.optString("status"),
+            reason = obj.optString("reason"),
+            customReason = obj.optString("customReason").takeIf { it.isNotBlank() },
+            requestedAt = obj.optString("requestedAt"),
+            processedAt = obj.optString("processedAt").takeIf { it.isNotBlank() },
+            adminNotes = obj.optString("adminNotes").takeIf { it.isNotBlank() },
+            deviceId = obj.optJSONObject("deviceId")?.let { parseDeviceInfoExt(it) } ?: parseDeviceInfoExt(JSONObject()),
+            enrollmentId = obj.optJSONObject("enrollmentId")?.let { parseEnrollmentInfo(it) } ?: EnrollmentInfo("", "", null),
+            facilityId = obj.optJSONObject("facilityId")?.let { parseFacilityInfo(it) } ?: FacilityInfo("", "", null),
+            processedBy = obj.optJSONObject("processedBy")?.let { parseAdminInfo(it) },
+            pushNotificationSent = obj.optBoolean("pushNotificationSent")
+        )
+    }
+
+    private fun parseExitRequestStatus(obj: JSONObject): ExitRequestStatusResponse {
+        return ExitRequestStatusResponse(
+            requestId = obj.optString("requestId"),
+            status = obj.optString("status"),
+            reason = obj.optString("reason"),
+            customReason = obj.optString("customReason").takeIf { it.isNotBlank() },
+            requestedAt = obj.optString("requestedAt"),
+            processedAt = obj.optString("processedAt").takeIf { it.isNotBlank() },
+            completedAt = obj.optString("completedAt").takeIf { it.isNotBlank() },
+            adminNotes = obj.optString("adminNotes").takeIf { it.isNotBlank() },
+            device = obj.optJSONObject("device")?.let { parseDeviceInfoExt(it) } ?: parseDeviceInfoExt(JSONObject()),
+            facility = obj.optJSONObject("facility")?.let { parseFacilityInfo(it) } ?: FacilityInfo("", "", null),
+            processedBy = obj.optJSONObject("processedBy")?.let { parseAdminInfo(it) }
+        )
+    }
+
+    private fun parseDeviceInfoExt(obj: JSONObject) = com.sierra.admin.modal.DeviceInfo(
+        deviceId = obj.optString("deviceId"),
+        visitorId = obj.optString("visitorId"),
+        deviceInfo = com.sierra.admin.modal.DeviceSpecs(
+            manufacturer = obj.optJSONObject("deviceInfo")?.optString("manufacturer") ?: obj.optString("manufacturer"),
+            model = obj.optJSONObject("deviceInfo")?.optString("model") ?: obj.optString("model"),
+            platform = obj.optJSONObject("deviceInfo")?.optString("platform") ?: obj.optString("platform", "android")
+        ),
+        pushToken = obj.optString("pushToken").takeIf { it.isNotBlank() }
+    )
+
+    private fun parseEnrollmentInfo(obj: JSONObject) = EnrollmentInfo(
+        enrollmentId = obj.optString("enrollmentId"),
+        enrolledAt = obj.optString("enrolledAt"),
+        facilityId = obj.optString("facilityId").takeIf { it.isNotBlank() }
+    )
+
+    private fun parseFacilityInfo(obj: JSONObject) = FacilityInfo(
+        name = obj.optString("name"),
+        facilityId = obj.optString("facilityId"),
+        address = obj.optString("address").takeIf { it.isNotBlank() }
+    )
+
+    private fun parseAdminInfo(obj: JSONObject) = AdminInfo(
+        name = obj.optString("name"),
+        id = obj.optString("id").takeIf { it.isNotBlank() }
+    )
+
+    private fun parseStatusCounts(obj: JSONObject) = StatusCounts(
+        pending = obj.optInt("pending", 0),
+        approved = obj.optInt("approved", 0),
+        denied = obj.optInt("denied", 0),
+        completed = obj.optInt("completed", 0)
+    )
+
+    private fun parseDevicePushInfo(obj: JSONObject) = DevicePushInfo(
+        deviceId = obj.optString("deviceId"),
+        hasPushToken = obj.optBoolean("hasPushToken")
+    )
 }

@@ -1,16 +1,13 @@
 package com.camshield.admin.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -20,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -29,7 +25,6 @@ import com.sierra.admin.auth.TokenManager
 import com.sierra.admin.modal.ActiveDeviceItem
 import com.sierra.admin.modal.ApiResult
 import com.sierra.admin.modal.EnrollmentDetail
-import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -53,13 +48,8 @@ fun DeviceDetailScreen(
     onUnauthorized: () -> Unit
 ) {
     val enrollmentState by viewModel.enrollmentState.collectAsState()
-    val forceExitState by viewModel.forceExitState.collectAsState()
     val selectedDevice by viewModel.selectedDevice.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    var showForceExitDialog by remember { mutableStateOf(false) }
-    val adminUsername = tokenManager.getAdminUsername() ?: "Admin"
-    val isForceExitLoading = forceExitState is ApiResult.Loading
     val isRefreshing = enrollmentState is ApiResult.Loading && viewModel.enrollmentState.value != null
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
@@ -73,26 +63,6 @@ fun DeviceDetailScreen(
     LaunchedEffect(enrollmentState) {
         if (enrollmentState is ApiResult.Error && (enrollmentState as ApiResult.Error).code == 401) {
             onUnauthorized()
-        }
-    }
-
-    LaunchedEffect(forceExitState) {
-        when (val state = forceExitState) {
-            is ApiResult.Success -> {
-                val pushed = if (state.data.pushSent) "Push notification sent." else "Push not sent."
-                scope.launch {
-                    snackbarHostState.showSnackbar("Camera unlocked! $pushed")
-                }
-                viewModel.resetForceExit()
-                viewModel.refreshDevices()
-                viewModel.clearSelectedDevice()
-                navController.popBackStack()
-            }
-            is ApiResult.Error -> {
-                scope.launch { snackbarHostState.showSnackbar(state.message) }
-                viewModel.resetForceExit()
-            }
-            else -> {}
         }
     }
 
@@ -139,7 +109,7 @@ fun DeviceDetailScreen(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
                         Text(
-                            if (state.code == 404) "No active enrollment found for this device." else state.message.ifBlank { "Couldn’t load device details. Pull to refresh or try again." },
+                            if (state.code == 404) "No active enrollment found for this device." else state.message.ifBlank { "Couldn't load device details. Pull to refresh or try again." },
                             color = DangerRed,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
@@ -154,9 +124,7 @@ fun DeviceDetailScreen(
                 is ApiResult.Success -> EnrollmentDetailContent(
                     enrollment = state.data,
                     selectedDevice = selectedDevice,
-                    padding = PaddingValues(0.dp),
-                    isForceExitLoading = isForceExitLoading,
-                    onForceExitClick = { showForceExitDialog = true }
+                    padding = PaddingValues(0.dp)
                 )
 
                 else -> {}
@@ -173,27 +141,13 @@ fun DeviceDetailScreen(
             )
         }
     }
-
-    if (showForceExitDialog) {
-        ForceExitDialog(
-            adminUsername = adminUsername,
-            isLoading = isForceExitLoading,
-            onDismiss = { showForceExitDialog = false },
-            onConfirm = { reason ->
-                showForceExitDialog = false
-                viewModel.forceExit(deviceId, reason, adminUsername)
-            }
-        )
-    }
 }
 
 @Composable
 private fun EnrollmentDetailContent(
     enrollment: EnrollmentDetail,
     selectedDevice: ActiveDeviceItem?,
-    padding: PaddingValues,
-    isForceExitLoading: Boolean,
-    onForceExitClick: () -> Unit
+    padding: PaddingValues
 ) {
     Column(
         modifier = Modifier
@@ -248,27 +202,6 @@ private fun EnrollmentDetailContent(
             }
             if (enrollment.enrolledAt.isNotBlank()) {
                 DetailRow("Enrolled At", formatDateTimeFriendly(enrollment.enrolledAt))
-            }
-        }
-
-        // Force Exit Button
-        Spacer(Modifier.height(8.dp))
-        Button(
-            onClick = onForceExitClick,
-            modifier = Modifier
-                .fillMaxWidth(0.75f)
-                .align(Alignment.CenterHorizontally)
-                .height(56.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = DangerRed),
-            enabled = !isForceExitLoading
-        ) {
-            if (isForceExitLoading) {
-                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-            } else {
-                Icon(Icons.Default.ExitToApp, null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Force Exit & Unlock Camera", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -351,87 +284,4 @@ private fun formatDateTimeFriendly(raw: String): String = runCatching {
     }.getOrElse {
         raw.replace("T", " ").take(19)
     }
-}
-
-@Composable
-private fun ForceExitDialog(
-    adminUsername: String,
-    isLoading: Boolean,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    var reason by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = { if (!isLoading) onDismiss() },
-        containerColor = CardBg,
-        title = {
-            Text("Force Exit Device", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "This will unlock the device's camera and mark the visitor as exited.",
-                    color = TextGray,
-                    fontSize = 14.sp
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Reason (optional)", color = TextGray, fontSize = 13.sp)
-                    OutlinedTextField(
-                        value = reason,
-                        onValueChange = { reason = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("e.g. User left without checkout", color = Color(0xFF4A5568)) },
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedContainerColor = Color(0xFF0D1426),
-                            unfocusedContainerColor = Color(0xFF0D1426),
-                            focusedBorderColor = DangerRed,
-                            unfocusedBorderColor = Color(0xFF2A3245)
-                        )
-                    )
-                }
-                Text("Initiated by: $adminUsername", color = TextGray, fontSize = 12.sp)
-            }
-        },
-        // Custom button row to center-align actions
-        confirmButton = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 1.dp),
-                horizontalArrangement = Arrangement.spacedBy(15.dp, Alignment.CenterHorizontally)
-            ) {
-                OutlinedButton(
-                    onClick = { if (!isLoading) onDismiss() },
-                    enabled = !isLoading,
-                    shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, TextGray),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = TextGray,
-                        disabledContentColor = TextGray.copy(alpha = 0.5f)
-                    )
-                ) {
-                    Text("Cancel")
-                }
-                Button(
-                    onClick = { onConfirm(reason.ifBlank { "Admin forced exit" }) },
-                    colors = ButtonDefaults.buttonColors(containerColor = DangerRed),
-                    shape = RoundedCornerShape(8.dp),
-                    enabled = !isLoading
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    } else {
-                        Text("Confirm Exit", color = Color.White)
-                    }
-                }
-            }
-        },
-        shape = RoundedCornerShape(16.dp)
-    )
 }
