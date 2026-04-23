@@ -1,17 +1,25 @@
 package com.sierra.camblock.activity
 
+import android.Manifest
 import android.app.ActivityManager
 import android.app.Dialog
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.View
 import android.widget.Button
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.WindowInsetsCompat
@@ -23,9 +31,38 @@ import com.sierra.camblock.utils.PrefsManager
 import com.sierra.camblock.utils.getTimeFormat
 
 class CameraDisabledActivity : AppCompatActivity() {
+    companion object {
+        const val EXTRA_SHOW_TOAST = "show_toast"
+    }
+
     private lateinit var binding : ActivityCameraDisabledBinding
     private lateinit var prefsManager: PrefsManager
     private var visitorId: String = ""
+    private var openExitScanAfterSettings: Boolean = false
+
+    private val exitCameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            launchExitScanActivity()
+        } else if (!shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
+            showExitCameraSettingsDialog()
+        } else {
+            Toast.makeText(this, "Camera permission is required to scan exit QR.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private val exitCameraSettingsLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (
+            openExitScanAfterSettings &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        ) {
+            launchExitScanActivity()
+        }
+        openExitScanAfterSettings = false
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,6 +79,59 @@ class CameraDisabledActivity : AppCompatActivity() {
         restoreVisitorId()
         initFields()
         initClickListeners()
+        maybeShowSettingsBlockedToast()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        maybeShowSettingsBlockedToast()
+    }
+
+    private fun maybeShowSettingsBlockedToast() {
+        if (!intent.getBooleanExtra(EXTRA_SHOW_TOAST, false)) return
+        Toast.makeText(
+            this,
+            "Settings access is blocked while camera lock is active.",
+            Toast.LENGTH_SHORT
+        ).show()
+        intent.removeExtra(EXTRA_SHOW_TOAST)
+    }
+
+    private fun handleExitScanClick() {
+        val hasCameraPermission = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasCameraPermission) {
+            launchExitScanActivity()
+            return
+        }
+
+        // Trigger native system permission dialog directly.
+        exitCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+    }
+
+    private fun showExitCameraSettingsDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Camera Permission Denied")
+            .setMessage("Please enable camera permission in app settings to scan exit QR.")
+            .setPositiveButton("Open Settings") { _, _ ->
+                openExitScanAfterSettings = true
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", packageName, null)
+                }
+                exitCameraSettingsLauncher.launch(intent)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun launchExitScanActivity() {
+        val intent = Intent(this, ScanActivity::class.java)
+        intent.putExtra("SCAN_ACTION", "EXIT")
+        startActivity(intent)
     }
 
     private fun restoreVisitorId() {
@@ -107,9 +197,7 @@ class CameraDisabledActivity : AppCompatActivity() {
             if (!DeviceUtils.isInternetAvailable(this)){
                 showCustomNoInternetDialog(this)
             }else{
-                val intent = Intent(this, ScanActivity::class.java)
-                intent.putExtra("SCAN_ACTION", "EXIT")
-                startActivity(intent)
+                handleExitScanClick()
             }
 
         }
