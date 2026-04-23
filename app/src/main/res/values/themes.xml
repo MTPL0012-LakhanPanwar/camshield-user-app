@@ -25,20 +25,6 @@
     <style name="SwitchActivatedColor">
         <item name="colorControlActivated">#1E61EB</item>
     </style>
-
-    <!-- Splash Screen Theme -->
-    <style name="Theme.App.Starting" parent="Theme.MaterialComponents.Light.NoActionBar">
-        <item name="android:windowBackground">@drawable/splash_background</item>
-        <item name="android:statusBarColor">@color/splash_bg_two</item>
-        <item name="android:navigationBarColor">@color/splash_bg_two</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
-
-        <!-- Android 12+ Splash Screen Attributes -->
-        <item name="android:windowSplashScreenBackground">@color/splash_bg_two</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/logo_jabil_splash</item>
-        <item name="android:windowSplashScreenBrandingImage">@drawable/logo_jabil_splash</item>
-    </style>
     
     <!-- Card Style -->
     <style name="CardStyle" parent="Widget.MaterialComponents.CardView">
