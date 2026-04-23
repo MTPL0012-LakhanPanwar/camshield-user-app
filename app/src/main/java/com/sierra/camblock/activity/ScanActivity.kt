@@ -336,7 +336,7 @@ class ScanActivity : AppCompatActivity() {
             val activityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
             val services = activityManager.getRunningServices(Integer.MAX_VALUE)
             for (service in services) {
-                if (service.service.className == "com.example.cameralockdemo.CameraBlockerService") {
+                if (service.service.className == "com.sierra.camblock.CameraBlockerService") {
                     return true
                 }
             }
