@@ -830,7 +830,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle(title)
             .setMessage(message)
             .setPositiveButton("OK", null)
-            .setIcon(R.drawable.logo_jabil)
+            .setIcon(R.drawable.icon_camblock)
             .show()
     }
 
