@@ -281,7 +281,11 @@ class CameraBlockerService : Service() {
 
             while (events.hasNextEvent()) {
                 events.getNextEvent(event)
-                if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
+                val isForegroundTransition =
+                    event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND ||
+                            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+                                    event.eventType == UsageEvents.Event.ACTIVITY_RESUMED)
+                if (isForegroundTransition) {
                     currentApp = event.packageName
                     lastEventTimestamp = event.timeStamp
                 }
@@ -384,6 +388,7 @@ class CameraBlockerService : Service() {
             }
 
             params.flags = buildOverlayFlags(interactive = true)
+            params.alpha = 1f
             view.visibility = View.VISIBLE
             view.alpha = 1f
             view.invalidate()
@@ -482,6 +487,9 @@ class CameraBlockerService : Service() {
         }
 
         layoutParams.gravity = Gravity.TOP or Gravity.START
+        // Keep hidden pre-attached overlays fully transparent at the window level.
+        // On some Android 12 builds, view alpha alone is not enough for touch pass-through.
+        layoutParams.alpha = if (interactive) 1f else 0f
         return layoutParams
     }
 
@@ -512,6 +520,7 @@ class CameraBlockerService : Service() {
             val params = overlayLayoutParams
             if (view != null && params != null && windowManager != null && isOverlayAttached) {
                 params.flags = buildOverlayFlags(interactive = false)
+                params.alpha = 0f
                 view.visibility = View.VISIBLE
                 view.alpha = 0f
                 windowManager?.updateViewLayout(view, params)
