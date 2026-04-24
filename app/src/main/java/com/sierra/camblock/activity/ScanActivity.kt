@@ -409,7 +409,7 @@ class ScanActivity : AppCompatActivity() {
     }
 
     private fun startCamDisabledActivity() {
-        val effectiveVisitorId = if (visitorId.isNotBlank()) visitorId else prefsManager.activeVisitorId
+        val effectiveVisitorId = if (visitorId.isNotBlank()) visitorId  else prefsManager.activeVisitorId
         val intent = Intent(this, CameraDisabledActivity::class.java).apply {
             // These flags clear the entire task stack and make this the new root
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -428,7 +428,8 @@ class ScanActivity : AppCompatActivity() {
             osVersion = Build.VERSION.RELEASE,
             platform = "android",
             appVersion = Constants.APP_VERSION,
-            deviceName = Build.DEVICE
+            deviceName = Build.DEVICE,
+            pushToken = prefsManager.pushToken
         )
 
         val request = ScanEntryRequest(

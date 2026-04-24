@@ -12,15 +12,12 @@ data class ValidateQRRequest(
 data class ScanEntryRequest(
     @SerializedName("token")
     val token: String,
-    
+
     @SerializedName("deviceId")
     val deviceId: String,
     
     @SerializedName("deviceInfo")
     val deviceInfo: DeviceInfo,
-    
-    @SerializedName("visitorInfo")
-    val visitorInfo: VisitorInfo? = null
 )
 
 data class ScanExitRequest(
@@ -48,24 +45,10 @@ data class DeviceInfo(
     val appVersion: String,
     
     @SerializedName("deviceName")
-    val deviceName: String? = null
-)
+    val deviceName: String? = null,
 
-data class VisitorInfo(
-    @SerializedName("name")
-    val name: String? = null,
-    
-    @SerializedName("email")
-    val email: String? = null,
-    
-    @SerializedName("phone")
-    val phone: String? = null,
-    
-    @SerializedName("purpose")
-    val purpose: String? = null,
-    
-    @SerializedName("company")
-    val company: String? = null
+    @SerializedName("pushToken")
+    val pushToken: String? = null
 )
 
 // ==================== Response Models ====================

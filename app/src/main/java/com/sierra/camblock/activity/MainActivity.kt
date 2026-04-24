@@ -586,13 +586,14 @@ class MainActivity : AppCompatActivity() {
             osVersion = Build.VERSION.RELEASE,
             platform = "android",
             appVersion = Constants.APP_VERSION,
-            deviceName = Build.DEVICE
+            deviceName = Build.DEVICE,
+            pushToken = prefsManager.pushToken
         )
 
         val request = ScanEntryRequest(
             token = token,
             deviceId = deviceId,
-            deviceInfo = deviceInfo
+            deviceInfo = deviceInfo,
         )
 
         val response = RetrofitClient.apiService.scanEntry(request)

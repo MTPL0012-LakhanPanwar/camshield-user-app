@@ -46,6 +46,7 @@ class CameraDisabledActivity : AppCompatActivity() {
     private lateinit var prefsManager: PrefsManager
     private var visitorId: String = ""
     private var openExitScanAfterSettings: Boolean = false
+    private var openForceExitAfterSettings: Boolean = false
 
     private val exitCameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -76,6 +77,42 @@ class CameraDisabledActivity : AppCompatActivity() {
             launchExitScanActivity()
         }
         openExitScanAfterSettings = false
+    }
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            handleForceExitRequest()
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                   !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
+            showNotificationSettingsDialog()
+        } else {
+            Toast.makeText(
+                this,
+                "Notification permission is required to receive updates about your exit request.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private val notificationSettingsLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (openForceExitAfterSettings) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    handleForceExitRequest()
+                }
+            } else {
+                handleForceExitRequest()
+            }
+        }
+        openForceExitAfterSettings = false
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -146,6 +183,39 @@ class CameraDisabledActivity : AppCompatActivity() {
         val intent = Intent(this, ScanActivity::class.java)
         intent.putExtra("SCAN_ACTION", "EXIT")
         startActivity(intent)
+    }
+
+    private fun checkNotificationPermissionAndRequest() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val hasNotificationPermission = ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (hasNotificationPermission) {
+                handleForceExitRequest()
+                return
+            }
+
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            handleForceExitRequest()
+        }
+    }
+
+    private fun showNotificationSettingsDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Notification Permission Required")
+            .setMessage("Please enable notification permission in app settings to receive updates about your exit request.")
+            .setPositiveButton("Open Settings") { _, _ ->
+                openForceExitAfterSettings = true
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", packageName, null)
+                }
+                notificationSettingsLauncher.launch(intent)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun restoreVisitorId() {
@@ -221,7 +291,7 @@ class CameraDisabledActivity : AppCompatActivity() {
             if (!DeviceUtils.isInternetAvailable(this)) {
                 showCustomNoInternetDialog(this)
             } else {
-                handleForceExitRequest()
+                checkNotificationPermissionAndRequest()
             }
         }
 

@@ -99,6 +99,14 @@
                 android:value="Monitors camera availability and presents a blocking overlay while the visitor is inside a restricted area." />
         </service>
 
+        <service
+            android:name=".firebase.CamBlockFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <receiver
             android:name=".DeviceAdminReceiver"
             android:description="@string/device_admin_description"
