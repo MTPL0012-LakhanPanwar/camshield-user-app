@@ -164,19 +164,19 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-            Row(horizontalArrangement = Arrangement.Center) {
-                Text("Don't have an account? ", color = TextGray, fontSize = 14.sp)
-                Text(
-                    "Register",
-                    color = AccentBlue,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.clickable {
-                        onNavigateToRegister()
-                    }
-                )
-            }
+            // Spacer(Modifier.height(24.dp))
+            // Row(horizontalArrangement = Arrangement.Center) {
+            //     Text("Don't have an account? ", color = TextGray, fontSize = 14.sp)
+            //     Text(
+            //         "Register",
+            //         color = AccentBlue,
+            //         fontSize = 14.sp,
+            //         fontWeight = FontWeight.SemiBold,
+            //         modifier = Modifier.clickable {
+            //             onNavigateToRegister()
+            //         }
+            //     )
+            // }
         }
     }
 }
