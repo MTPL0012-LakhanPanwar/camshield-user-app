@@ -21,6 +21,13 @@ import com.sierra.camblock.utils.PrefsManager
 import com.sierra.camblock.utils.applyDarkSystemBars
 
 class SplashActivity : AppCompatActivity() {
+    companion object {
+        private const val EXTRA_NOTIFICATION_DATA = "notification_data"
+        private const val EXTRA_TYPE = "type"
+        private const val TYPE_FORCE_EXIT_APPROVED = "FORCE_EXIT_APPROVED"
+        private const val TYPE_RESTORE = "RESTORE"
+    }
+
     private lateinit var binding : ActivitySplashBinding
     private lateinit var deviceAdminManager: DeviceAdminManager
     private lateinit var prefsManager: PrefsManager
@@ -42,9 +49,19 @@ class SplashActivity : AppCompatActivity() {
 
         ensureBlockerServiceRunningIfLocked()
 
+        if (routeFromNotificationIntent(intent)) {
+            return
+        }
+
         Handler(Looper.getMainLooper()).postDelayed({
             navigateToAppropriateScreen()
         }, 3000)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        routeFromNotificationIntent(intent)
     }
 
     private fun ensureBlockerServiceRunningIfLocked() {
@@ -79,6 +96,48 @@ class SplashActivity : AppCompatActivity() {
         }
         startActivity(intent)
         finish()
+    }
+
+    private fun routeFromNotificationIntent(launchIntent: Intent?): Boolean {
+        if (launchIntent == null) return false
+
+        val payload = extractNotificationPayload(launchIntent)
+        val type = payload[EXTRA_TYPE]
+
+        if (type != TYPE_FORCE_EXIT_APPROVED && type != TYPE_RESTORE) {
+            return false
+        }
+
+        val restoreIntent = Intent(this, PermissionRestoreActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra(EXTRA_NOTIFICATION_DATA, HashMap(payload))
+        }
+        startActivity(restoreIntent)
+        finish()
+        return true
+    }
+
+    private fun extractNotificationPayload(launchIntent: Intent): Map<String, String> {
+        val payload = mutableMapOf<String, String>()
+
+        val bundledPayload = launchIntent.extras?.get(EXTRA_NOTIFICATION_DATA)
+        if (bundledPayload is HashMap<*, *>) {
+            bundledPayload.forEach { (key, value) ->
+                if (key is String && value is String) {
+                    payload[key] = value
+                }
+            }
+        }
+
+        val typeFromExtras = launchIntent.getStringExtra(EXTRA_TYPE)
+            ?: launchIntent.getStringExtra("gcm.notification.type")
+            ?: launchIntent.getStringExtra("gcm.n.type")
+
+        if (!typeFromExtras.isNullOrBlank()) {
+            payload[EXTRA_TYPE] = typeFromExtras
+        }
+
+        return payload
     }
 
     private fun allPermissionsGranted(): Boolean {

@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.Toast
@@ -23,22 +24,29 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
+import com.google.gson.Gson
 import com.sierra.camblock.CameraBlockerService
 import com.sierra.camblock.R
+import com.sierra.camblock.api.RetrofitClient
+import com.sierra.camblock.api.models.ApiResponse
+import com.sierra.camblock.api.models.ForceExitRequest
 import com.sierra.camblock.databinding.ActivityCameraDisabledBinding
 import com.sierra.camblock.utils.DeviceUtils
 import com.sierra.camblock.utils.PrefsManager
 import com.sierra.camblock.utils.getTimeFormat
+import kotlinx.coroutines.launch
 
 class CameraDisabledActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_SHOW_TOAST = "show_toast"
     }
 
-    private lateinit var binding : ActivityCameraDisabledBinding
+    private lateinit var binding: ActivityCameraDisabledBinding
     private lateinit var prefsManager: PrefsManager
     private var visitorId: String = ""
     private var openExitScanAfterSettings: Boolean = false
+    private var openForceExitAfterSettings: Boolean = false
 
     private val exitCameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -48,7 +56,11 @@ class CameraDisabledActivity : AppCompatActivity() {
         } else if (!shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
             showExitCameraSettingsDialog()
         } else {
-            Toast.makeText(this, "Camera permission is required to scan exit QR.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                "Camera permission is required to scan exit QR.",
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -57,11 +69,50 @@ class CameraDisabledActivity : AppCompatActivity() {
     ) {
         if (
             openExitScanAfterSettings &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
         ) {
             launchExitScanActivity()
         }
         openExitScanAfterSettings = false
+    }
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            handleForceExitRequest()
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                   !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
+            showNotificationSettingsDialog()
+        } else {
+            Toast.makeText(
+                this,
+                "Notification permission is required to receive updates about your exit request.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private val notificationSettingsLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (openForceExitAfterSettings) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    handleForceExitRequest()
+                }
+            } else {
+                handleForceExitRequest()
+            }
+        }
+        openForceExitAfterSettings = false
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -134,6 +185,39 @@ class CameraDisabledActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
+    private fun checkNotificationPermissionAndRequest() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val hasNotificationPermission = ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (hasNotificationPermission) {
+                handleForceExitRequest()
+                return
+            }
+
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            handleForceExitRequest()
+        }
+    }
+
+    private fun showNotificationSettingsDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Notification Permission Required")
+            .setMessage("Please enable notification permission in app settings to receive updates about your exit request.")
+            .setPositiveButton("Open Settings") { _, _ ->
+                openForceExitAfterSettings = true
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", packageName, null)
+                }
+                notificationSettingsLauncher.launch(intent)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun restoreVisitorId() {
         val visitorIdFromIntent = intent.getStringExtra("visitorId").orEmpty()
         visitorId = if (visitorIdFromIntent.isNotBlank()) {
@@ -171,6 +255,7 @@ class CameraDisabledActivity : AppCompatActivity() {
             activityManager.isInLockTaskMode
         }
     }
+
     fun showCustomNoInternetDialog(context: Context) {
         // 1. Create the Dialog object
         val dialog = Dialog(context)
@@ -192,14 +277,22 @@ class CameraDisabledActivity : AppCompatActivity() {
 
         dialog.show()
     }
+
     private fun initClickListeners() {
         binding.btnScanEntry.setOnClickListener {
-            if (!DeviceUtils.isInternetAvailable(this)){
+            if (!DeviceUtils.isInternetAvailable(this)) {
                 showCustomNoInternetDialog(this)
-            }else{
+            } else {
                 handleExitScanClick()
             }
 
+        }
+        binding.btnForgetExit.setOnClickListener {
+            if (!DeviceUtils.isInternetAvailable(this)) {
+                showCustomNoInternetDialog(this)
+            } else {
+                checkNotificationPermissionAndRequest()
+            }
         }
 
         // This back press dispatcher is implemented for suppressed the toast message,
@@ -211,6 +304,70 @@ class CameraDisabledActivity : AppCompatActivity() {
                 }
             }
         })
+    }
+
+    private fun handleForceExitRequest() {
+        val deviceId = DeviceUtils.getDeviceId(this)
+        val reason = "User requested force exit"
+
+        val request = ForceExitRequest(deviceId = deviceId, reason = reason)
+
+        val progressDialog = AlertDialog.Builder(this)
+            .setTitle("Submitting Request")
+            .setMessage("Please wait...")
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+
+        lifecycleScope.launch {
+            try {
+                val response = RetrofitClient.apiService.createForceExitRequest(request)
+                progressDialog.dismiss()
+
+                if (response.isSuccessful) {
+                    val apiResponse = response.body()
+
+                    // We check if the server-side status is "success"
+                    if (apiResponse?.status == "success") {
+                        // Extract the message from the server
+                        val serverMessage = apiResponse.message
+                        val requestId = apiResponse.data?.data?.requestId
+
+                        Toast.makeText(
+                            this@CameraDisabledActivity,
+                            "$serverMessage\nID: $requestId",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        // Handle case where HTTP is 200 but API returns "error" status
+                        val errorMessage = apiResponse?.data?.message ?: "Unknown server error"
+                        showError(errorMessage)
+                    }
+                } else {
+                    val errorJson = response.errorBody()?.string()
+
+                    // 2. Parse the JSON string manually using Gson
+                    val errorMessage = try {
+                        val adapter = Gson().getAdapter(ApiResponse::class.java)
+                        val errorResponse = adapter.fromJson(errorJson)
+                        errorResponse.message // Accessing the "message" field from your JSON
+                    } catch (e: Exception) {
+                        null
+                    }
+
+                    // 3. Show the parsed message or a fallback
+                    showError(errorMessage ?: "Server error: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                progressDialog.dismiss()
+                showError("Connection Error: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    // Helper to keep code clean
+    private fun showError(msg: String) {
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
     }
 
     private fun initFields() {

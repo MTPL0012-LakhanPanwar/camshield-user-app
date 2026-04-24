@@ -29,6 +29,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import com.sierra.admin.activity.LoginActivity
 import com.sierra.camblock.CameraBlockerService
 import com.sierra.camblock.R
 import com.sierra.camblock.api.RetrofitClient
@@ -39,6 +40,7 @@ import com.sierra.camblock.databinding.ActivityMainBinding
 import com.sierra.camblock.manager.DeviceAdminManager
 import com.sierra.camblock.utils.Constants
 import com.sierra.camblock.utils.DeviceUtils
+import com.sierra.camblock.utils.LoginNavigation
 import com.sierra.camblock.utils.PrefsManager
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
@@ -129,7 +131,9 @@ class MainActivity : AppCompatActivity() {
         // Initialize managers
         deviceAdminManager = DeviceAdminManager(this)
         prefsManager = PrefsManager(this)
-
+        binding.ivStatusIcon.setOnClickListener{
+            startActivity(Intent(this, LoginActivity::class.java))
+        }
         applySystemBarsAppearance()
         setupWindowInsets()
         setupClickListeners()
@@ -350,6 +354,9 @@ class MainActivity : AppCompatActivity() {
                 currentScanAction = ScanAction.EXIT
                 startQRScan()
             }
+        }
+        binding.tvAdminLogin.setOnClickListener {
+            LoginNavigation.showLoginConfirmation(this)
         }
         binding.iToolbar.btnHelp.setOnClickListener {
             startActivity(Intent(this, HelpActivity::class.java))
@@ -583,13 +590,14 @@ class MainActivity : AppCompatActivity() {
             osVersion = Build.VERSION.RELEASE,
             platform = "android",
             appVersion = Constants.APP_VERSION,
-            deviceName = Build.DEVICE
+            deviceName = Build.DEVICE,
+            pushToken = prefsManager.pushToken
         )
 
         val request = ScanEntryRequest(
             token = token,
             deviceId = deviceId,
-            deviceInfo = deviceInfo
+            deviceInfo = deviceInfo,
         )
 
         val response = RetrofitClient.apiService.scanEntry(request)

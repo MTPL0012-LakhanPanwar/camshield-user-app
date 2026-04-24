@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "13385935373",
+    "project_id": "camblock-e5b49",
+    "storage_bucket": "camblock-e5b49.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:13385935373:android:61253dbe268ac7a9914344",
+        "android_client_info": {
+          "package_name": "com.sierra.camblock"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8p65TAsljmwgixBffe73_LMfR8PGDRKI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -12,6 +12,7 @@ class PrefsManager(context: Context) {
         private const val KEY_IS_LOCKED = "is_locked"
         private const val KEY_ENTRY_TOKEN = "entry_token"
         private const val KEY_ACTIVE_VISITOR_ID = "active_visitor_id"
+        private const val KEY_PUSH_TOKEN = "push_token"
     }
 
     var isLocked: Boolean
@@ -37,6 +38,10 @@ class PrefsManager(context: Context) {
     var activeVisitorId: String
         get() = prefs.getString(KEY_ACTIVE_VISITOR_ID, "") ?: ""
         set(value) = prefs.edit().putString(KEY_ACTIVE_VISITOR_ID, value).apply()
+
+    var pushToken: String?
+        get() = prefs.getString(KEY_PUSH_TOKEN, null)
+        set(value) = prefs.edit().putString(KEY_PUSH_TOKEN, value).apply()
 
     var isXiaomiSetupDone: Boolean
         get() = prefs.getBoolean("xiaomi_setup_done", false)
