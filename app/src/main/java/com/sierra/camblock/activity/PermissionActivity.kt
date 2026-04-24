@@ -16,6 +16,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.sierra.camblock.R
 import com.sierra.camblock.databinding.ActivityPermissionBinding
+import com.sierra.camblock.utils.LoginNavigation
 import com.sierra.camblock.utils.applyDarkSystemBars
 
 class PermissionActivity : AppCompatActivity() {
@@ -43,6 +44,10 @@ class PermissionActivity : AppCompatActivity() {
         setupSwitches()
         updateAllSwitches()
         updateContinueButton()
+
+        binding.tvAdminLogin.setOnClickListener {
+            LoginNavigation.showLoginConfirmation(this)
+        }
 
         binding.btnContinue.setOnClickListener {
             if (allPermissionsGranted()) {
