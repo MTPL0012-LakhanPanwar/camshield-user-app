@@ -45,4 +45,36 @@ interface ApiService {
     suspend fun getEnrollmentStatus(
         @Path("deviceId") deviceId: String
     ): Response<ApiResponse<EnrollmentStatusResponse>>
+
+    /**
+     * Create Force Exit Request
+     * Endpoint: POST /api/force-exit/request
+     * Request body requires deviceId and optional reason
+     */
+    @POST(Constants.ENDPOINT_FORCE_EXIT_REQUEST)
+    suspend fun createForceExitRequest(
+        @Body request: ForceExitRequest
+    ): Response<ApiResponse<ForceExitResponse>>
+
+    /**
+     * Check Request Status
+     * Endpoint: GET /api/force-exit/status/:deviceId
+     * Returns the current status of the force exit request for a device
+     */
+    @GET("/api/force-exit/status/{deviceId}")
+    suspend fun checkRequestStatus(
+        @Path("deviceId") deviceId: String
+    ): Response<ApiResponse<ForceExitStatusResponse>>
+
+    /**
+     * Complete Force Exit (Handle Push Notification)
+     * Endpoint: POST /api/force-exit/complete
+     * Called when user taps the push notification to restore permissions
+     */
+    @POST("/api/force-exit/complete")
+    suspend fun completeForceExit(
+        @Body request: CompleteForceExitRequest
+    ): Response<ApiResponse<CompleteForceExitResponse>>
+
+
 }

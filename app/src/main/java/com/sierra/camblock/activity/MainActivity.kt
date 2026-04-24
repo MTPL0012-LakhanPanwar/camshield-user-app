@@ -29,6 +29,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import com.sierra.admin.activity.LoginActivity
 import com.sierra.camblock.CameraBlockerService
 import com.sierra.camblock.R
 import com.sierra.camblock.api.RetrofitClient
@@ -130,7 +131,9 @@ class MainActivity : AppCompatActivity() {
         // Initialize managers
         deviceAdminManager = DeviceAdminManager(this)
         prefsManager = PrefsManager(this)
-
+        binding.ivStatusIcon.setOnClickListener{
+            startActivity(Intent(this, LoginActivity::class.java))
+        }
         applySystemBarsAppearance()
         setupWindowInsets()
         setupClickListeners()
@@ -587,13 +590,14 @@ class MainActivity : AppCompatActivity() {
             osVersion = Build.VERSION.RELEASE,
             platform = "android",
             appVersion = Constants.APP_VERSION,
-            deviceName = Build.DEVICE
+            deviceName = Build.DEVICE,
+            pushToken = prefsManager.pushToken
         )
 
         val request = ScanEntryRequest(
             token = token,
             deviceId = deviceId,
-            deviceInfo = deviceInfo
+            deviceInfo = deviceInfo,
         )
 
         val response = RetrofitClient.apiService.scanEntry(request)

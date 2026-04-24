@@ -15,6 +15,9 @@ object Constants {
     const val ENDPOINT_SCAN_ENTRY = "enrollments/scan-entry"
     const val ENDPOINT_SCAN_EXIT = "enrollments/scan-exit"
     const val ENDPOINT_STATUS = "enrollments/status/{deviceId}"
+
+    const val ENDPOINT_FORCE_EXIT_REQUEST = "force-exit/request"
+
     
     
     // ==================== SharedPreferences Keys ====================

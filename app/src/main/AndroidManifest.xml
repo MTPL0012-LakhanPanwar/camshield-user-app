@@ -33,6 +33,13 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CameraLockDemo"
         tools:targetApi="31">
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="@string/fcm_default_notification_channel_id" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/icon_lock" />
+
         <activity
             android:name=".activity.HelpActivity"
             android:exported="false" />
@@ -55,6 +62,11 @@
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.sierra.camblock.action.FORCE_EXIT_NOTIFICATION" />
+                <action android:name="FLUTTER_NOTIFICATION_CLICK" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
         <activity
@@ -85,6 +97,10 @@
 
         <activity android:name="com.sierra.admin.activity.CreateUpdateFacility"
             android:exported="false"/>
+
+        <activity android:name="com.sierra.admin.activity.ExitRequestDetailActivity"
+            android:exported="false"/>
+
         <service
             android:name=".CameraBlockerService"
             android:enabled="true"
@@ -93,6 +109,14 @@
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Monitors camera availability and presents a blocking overlay while the visitor is inside a restricted area." />
+        </service>
+
+        <service
+            android:name=".firebase.CamBlockFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
         </service>
 
         <receiver

@@ -12,6 +12,7 @@
     <string name="camera_permission_required">Camera permission is required to scan QR codes</string>
     <string name="info_camera_unlocked">Camera is currently unlocked and available for use.</string>
     <string name="info_camera_locked">Camera is currently locked for security.</string>
+    <string name="fcm_default_notification_channel_id">camshield_notifications</string>
     <string name="admin_login_label"><u>Admin Login</u></string>
     <string name="admin_login_dialog_title">Go to Admin Login?</string>
     <string name="admin_login_dialog_message">You will leave this screen and continue to the admin login flow.</string>

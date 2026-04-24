@@ -41,7 +41,8 @@ import androidx.navigation.compose.rememberNavController
 import com.camshield.admin.viewmodel.AdminViewModel
 import com.camshield.admin.viewmodel.DeviceViewModel
 import com.camshield.admin.viewmodel.FacilityViewModel
-import com.sierra.admin.ui.AdminListContent
+import com.sierra.admin.ui.ExitRequestListContent
+import com.sierra.admin.viewmodel.ExitRequestViewModel
 import kotlinx.coroutines.launch
 
 private val DsBgDark = Color(0xFF0B101F)
@@ -51,8 +52,8 @@ private val DsTextGray = Color(0xFF8A92A6)
 
 sealed class DashboardTab(val route: String, val icon: ImageVector, val title: String) {
     object Facilities : DashboardTab("tab_facilities", Icons.Default.Business, "Facilities")
-    object Devices : DashboardTab("tab_devices", Icons.Default.ExitToApp, "Force Exit")
-    object Admins : DashboardTab("tab_admins", Icons.Default.People, "Admins")
+    object Devices : DashboardTab("tab_devices", Icons.Default.ExitToApp, "Active Devices")
+    object Admins : DashboardTab("tab_admins", Icons.Default.People, "Exit Requests")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,6 +63,7 @@ fun DashboardScreen(
     facilityViewModel: FacilityViewModel,
     adminViewModel: AdminViewModel,
     deviceViewModel: DeviceViewModel,
+    exitRequestViewModel: ExitRequestViewModel,
     facilityDetailLauncher: ActivityResultLauncher<Intent>,
     createUpdateLauncher: ActivityResultLauncher<Intent>,
     onLogout: () -> Unit
@@ -170,10 +172,7 @@ fun DashboardScreen(
                     )
                 }
                 composable(DashboardTab.Admins.route) {
-                    AdminListContent(
-                        viewModel = adminViewModel,
-                        onUnauthorized = handleUnauthorized
-                    )
+                    ExitRequestListContent(viewModel = exitRequestViewModel)
                 }
             }
         }
