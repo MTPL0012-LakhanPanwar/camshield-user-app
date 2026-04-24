@@ -121,5 +121,71 @@ data class FacilityInfo(
     val name: String,
     
     @SerializedName("address")
-    val address: String? = null
+    val address: String? = null,
+
+    @SerializedName("location")
+    val location:String = ""
+)
+// Add these data classes to the end of ApiModels.kt
+
+data class ForceExitRequest(
+    @SerializedName("deviceId")
+    val deviceId: String,
+
+    @SerializedName("reason")
+    val reason: String? = null
+)
+
+data class ForceExitResponse(
+    val status: String,
+    val message: String,
+    val data: ForceExitData?
+)
+
+// 3. The actual Data object inside the response
+data class ForceExitData(
+    val requestId: String,
+    val status: String,
+    val requestedAt: String
+)
+
+// Check Request Status Response
+data class ForceExitStatusResponse(
+    val status: String,
+    val message: String,
+    val data: ForceExitStatusData?
+)
+
+data class ForceExitStatusData(
+    val hasRequest: Boolean,
+    val requestId: String? = null,
+    val status: String? = null, // pending, approved, denied, completed
+    val requestedAt: String? = null,
+    val approvedAt: String? = null,
+    val deniedAt: String? = null,
+    val completedAt: String? = null,
+    val reason: String? = null,
+    val adminNotes: String? = null,
+    val facility: FacilityInfo? = null
+)
+
+// Complete Force Exit Request (for push notification handling)
+data class CompleteForceExitRequest(
+    @SerializedName("token")
+    val token: String, // restore_token_from_notification
+    
+    @SerializedName("deviceId")
+    val deviceId: String // device_identifier
+)
+
+// Complete Force Exit Response
+data class CompleteForceExitResponse(
+    val status: String,
+    val message: String,
+    val data: CompleteForceExitData?
+)
+
+data class CompleteForceExitData(
+    val action: String, // "UNLOCK_CAMERA"
+    val unlockSuccess: Boolean
 )

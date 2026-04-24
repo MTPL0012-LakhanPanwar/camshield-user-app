@@ -41,7 +41,7 @@ import androidx.navigation.compose.rememberNavController
 import com.camshield.admin.viewmodel.AdminViewModel
 import com.camshield.admin.viewmodel.DeviceViewModel
 import com.camshield.admin.viewmodel.FacilityViewModel
-import com.sierra.admin.ui.AdminListContent
+import com.sierra.admin.ui.ExitRequestListContent
 import kotlinx.coroutines.launch
 
 private val DsBgDark = Color(0xFF0B101F)
@@ -170,10 +170,7 @@ fun DashboardScreen(
                     )
                 }
                 composable(DashboardTab.Admins.route) {
-                    AdminListContent(
-                        viewModel = adminViewModel,
-                        onUnauthorized = handleUnauthorized
-                    )
+                    ExitRequestListContent()
                 }
             }
         }

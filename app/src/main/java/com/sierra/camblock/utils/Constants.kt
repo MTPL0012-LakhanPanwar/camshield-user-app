@@ -9,12 +9,15 @@ object Constants {
     // IMPORTANT: Change this to your backend server IP address
     // For emulator: use 10.0.2.2 (this points to localhost on your computer)
     // For physical device: use your computer's IP address (e.g., 192.168.1.100)
-    const val BASE_URL = "https://dd1f-103-180-38-170.ngrok-free.app/api/" // Updated to match backend port 5000
+    const val BASE_URL = "https://5415-103-180-38-170.ngrok-free.app/api/" // Updated to match backend port 5000
 
     const val ENDPOINT_VALIDATE_QR = "enrollments/validate-qr"
     const val ENDPOINT_SCAN_ENTRY = "enrollments/scan-entry"
     const val ENDPOINT_SCAN_EXIT = "enrollments/scan-exit"
     const val ENDPOINT_STATUS = "enrollments/status/{deviceId}"
+    
+    const val ENDPOINT_FORCE_EXIT_REQUEST = "force-exit/request"
+
     
     
     // ==================== SharedPreferences Keys ====================
