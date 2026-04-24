@@ -1,5 +1,11 @@
 package com.sierra.admin.modal
 
+
+// ─── Force Exit Request Models ───────────────────────────────────────────────────
+import com.google.gson.annotations.SerializedName
+import java.io.Serializable
+
+
 // ─── Auth ──────────────────────────────────────────────────────────────────────
 data class AdminData(
     val id: String = "",
@@ -17,7 +23,7 @@ data class AuthResponse(
 data class Coordinates(
     val latitude: Double = 0.0,
     val longitude: Double = 0.0
-)
+) : java.io.Serializable
 
 data class LocationData(
     val address: String = "",
@@ -25,7 +31,7 @@ data class LocationData(
     val state: String = "",
     val country: String = "",
     val coordinates: Coordinates? = null
-)
+) : java.io.Serializable
 
 data class FacilityData(
     val id: String = "",
@@ -39,7 +45,7 @@ data class FacilityData(
     val createdAt: String? = null,
     val updatedAt: String? = null,
     val activeQRCodes: List<QRData> = emptyList()
-)
+) : java.io.Serializable
 
 data class QRData(
     val id: String = "",
@@ -77,7 +83,7 @@ data class DeviceInfo(
     val status: String = "",
     val manufacturer: String = "",
     val osVersion: String = ""
-)
+) : java.io.Serializable
 
 data class ActiveDeviceItem(
     val id: String = "",
@@ -114,6 +120,85 @@ data class PaginatedData<T>(
     val limit: Int = 20,
     val total: Int = 0,
     val totalPages: Int = 1
+)
+
+data class ForceExitRequestItem(
+    @SerializedName("_id")
+    val id: String = "",
+
+    @SerializedName("requestId")
+    val requestId: String = "",
+
+    @SerializedName("deviceId")
+    val device: DeviceDetails = DeviceDetails(),
+
+    @SerializedName("facilityId")
+    val facility: FacilityDataa = FacilityDataa(),
+
+    @SerializedName("visitorId")
+    val visitorId: String? = null,
+
+    @SerializedName("status")
+    val status: String = "", // pending, approved, denied, completed
+
+    @SerializedName("reason")
+    val reason: String? = null,
+
+    @SerializedName("pushNotificationSent")
+    val pushNotificationSent: Boolean = false,
+
+    @SerializedName("requestedAt")
+    val requestedAt: String? = null,
+
+    @SerializedName("createdAt")
+    val createdAt: String? = null,
+
+    @SerializedName("updatedAt")
+    val updatedAt: String? = null,
+
+    @SerializedName("__v")
+    val version: Int = 0
+) : Serializable
+
+// The "deviceId" field in your JSON is an object, not just a string/info class
+data class DeviceDetails(
+    @SerializedName("_id") val id: String = "",
+    @SerializedName("deviceId") val hardwareId: String = "",
+    @SerializedName("visitorId") val visitorId: String = "",
+    @SerializedName("deviceInfo") val deviceInfo: DeviceHardwareInfo = DeviceHardwareInfo()
+) : Serializable
+
+data class DeviceHardwareInfo(
+    @SerializedName("manufacturer") val manufacturer: String = "",
+    @SerializedName("model") val model: String = "",
+    @SerializedName("osVersion") val osVersion: String = "",
+    @SerializedName("platform") val platform: String = "",
+    @SerializedName("deviceName") val deviceName: String = ""
+) : Serializable
+
+data class FacilityDataa(
+    @SerializedName("_id") val id: String = "",
+    @SerializedName("name") val name: String = "",
+    @SerializedName("location") val location: LocationDataa = LocationDataa()
+) : Serializable
+
+data class LocationDataa(
+    @SerializedName("address") val address: String = "",
+    @SerializedName("city") val city: String = "",
+    @SerializedName("state") val state: String = "",
+    @SerializedName("country") val country: String = ""
+) : Serializable
+data class ForceExitApproveResponse(
+    val requestId: String = "",
+    val status: String = "", // approved
+    val approvedAt: String? = null,
+    val pushNotificationSent: Boolean = false
+)
+
+data class ForceExitDenyResponse(
+    val requestId: String = "",
+    val status: String = "", // denied
+    val deniedAt: String? = null
 )
 
 // ─── Result Wrapper ────────────────────────────────────────────────────────────

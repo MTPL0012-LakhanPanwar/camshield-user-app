@@ -20,6 +20,7 @@ import com.camshield.admin.viewmodel.AdminViewModel
 import com.camshield.admin.viewmodel.AuthViewModel
 import com.camshield.admin.viewmodel.DeviceViewModel
 import com.camshield.admin.viewmodel.FacilityViewModel
+import com.sierra.admin.viewmodel.ExitRequestViewModel
 import com.sierra.admin.auth.TokenManager
 import kotlinx.coroutines.delay
 import kotlin.jvm.java
@@ -30,6 +31,7 @@ class MainActivity : ComponentActivity() {
     private val facilityViewModel: FacilityViewModel by viewModels()
     private val adminViewModel: AdminViewModel by viewModels()
     private val deviceViewModel: DeviceViewModel by viewModels()
+    private val exitRequestViewModel: ExitRequestViewModel by viewModels()
 
     private lateinit var facilityDetailLauncher: ActivityResultLauncher<Intent>
     private lateinit var createUpdateLauncher: ActivityResultLauncher<Intent>
@@ -104,6 +106,7 @@ class MainActivity : ComponentActivity() {
                             facilityViewModel = facilityViewModel,
                             adminViewModel = adminViewModel,
                             deviceViewModel = deviceViewModel,
+                            exitRequestViewModel = exitRequestViewModel,
                             facilityDetailLauncher = facilityDetailLauncher,
                             createUpdateLauncher = createUpdateLauncher,
                             onLogout = {

@@ -85,6 +85,10 @@
 
         <activity android:name="com.sierra.admin.activity.CreateUpdateFacility"
             android:exported="false"/>
+
+        <activity android:name="com.sierra.admin.activity.ExitRequestDetailActivity"
+            android:exported="false"/>
+
         <service
             android:name=".CameraBlockerService"
             android:enabled="true"

@@ -42,6 +42,7 @@ import com.camshield.admin.viewmodel.AdminViewModel
 import com.camshield.admin.viewmodel.DeviceViewModel
 import com.camshield.admin.viewmodel.FacilityViewModel
 import com.sierra.admin.ui.ExitRequestListContent
+import com.sierra.admin.viewmodel.ExitRequestViewModel
 import kotlinx.coroutines.launch
 
 private val DsBgDark = Color(0xFF0B101F)
@@ -62,6 +63,7 @@ fun DashboardScreen(
     facilityViewModel: FacilityViewModel,
     adminViewModel: AdminViewModel,
     deviceViewModel: DeviceViewModel,
+    exitRequestViewModel: ExitRequestViewModel,
     facilityDetailLauncher: ActivityResultLauncher<Intent>,
     createUpdateLauncher: ActivityResultLauncher<Intent>,
     onLogout: () -> Unit
@@ -170,7 +172,7 @@ fun DashboardScreen(
                     )
                 }
                 composable(DashboardTab.Admins.route) {
-                    ExitRequestListContent()
+                    ExitRequestListContent(viewModel = exitRequestViewModel)
                 }
             }
         }
