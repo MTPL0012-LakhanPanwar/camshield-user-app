@@ -12,7 +12,7 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.sierra.camblock.CameraBlockerService
 import com.sierra.camblock.R
-import com.sierra.camblock.activity.PermissionRestoreActivity
+import com.sierra.camblock.activity.SplashActivity
 import com.sierra.camblock.api.RetrofitClient
 import com.sierra.camblock.manager.DeviceAdminManager
 import com.sierra.camblock.utils.DeviceUtils
@@ -28,6 +28,11 @@ class CamBlockFirebaseMessagingService : FirebaseMessagingService() {
         private const val TAG = "FCMService"
         private const val CHANNEL_ID = "camshield_notifications"
         private const val CHANNEL_NAME = "CamShield Notifications"
+        private const val ACTION_FORCE_EXIT_NOTIFICATION = "com.sierra.camblock.action.FORCE_EXIT_NOTIFICATION"
+        private const val EXTRA_NOTIFICATION_DATA = "notification_data"
+        private const val EXTRA_TYPE = "type"
+        private const val TYPE_FORCE_EXIT_APPROVED = "FORCE_EXIT_APPROVED"
+        private const val TYPE_RESTORE = "RESTORE"
 
         /**
          * Get the current FCM token. If not available in preferences,
@@ -73,14 +78,14 @@ class CamBlockFirebaseMessagingService : FirebaseMessagingService() {
         Log.d(TAG, "Message received from: ${remoteMessage.from}")
 
         // Check if message contains data payload
-        remoteMessage.data.isNotEmpty().let {
+        if (remoteMessage.data.isNotEmpty()) {
             Log.d(TAG, "Message data payload: ${remoteMessage.data}")
 
             val data = remoteMessage.data
             val type = data["type"] ?: return
 
             when (type) {
-                "RESTORE" -> handleRestoreNotification(data)
+                TYPE_FORCE_EXIT_APPROVED, TYPE_RESTORE -> handleRestoreNotification(data)
                 "REQUEST_REJECTED" -> handleRequestRejectedNotification(data)
                 else -> Log.w(TAG, "Unknown notification type: $type")
             }
@@ -170,20 +175,22 @@ class CamBlockFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     private fun showNotification(title: String, body: String, data: Map<String, String>) {
-        val intent = Intent(this, PermissionRestoreActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("notification_data", HashMap(data))
+        val intent = Intent(this, SplashActivity::class.java).apply {
+            action = ACTION_FORCE_EXIT_NOTIFICATION
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_NOTIFICATION_DATA, HashMap(data))
+            data[EXTRA_TYPE]?.let { putExtra(EXTRA_TYPE, it) }
         }
 
         val pendingIntent = PendingIntent.getActivity(
             this,
-            0,
+            System.currentTimeMillis().toInt(),
             intent,
-            PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(body)
             .setAutoCancel(true)
