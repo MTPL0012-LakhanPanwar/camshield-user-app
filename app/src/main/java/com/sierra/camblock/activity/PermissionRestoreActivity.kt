@@ -2,7 +2,6 @@ package com.sierra.camblock.activity
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -89,8 +88,7 @@ class PermissionRestoreActivity : AppCompatActivity() {
             try {
                 val response = RetrofitClient.apiService.completeForceExit(request)
                 if (response.isSuccessful && response.body()?.status == "success") {
-                    // Force exit completed successfully
-                    Log.e(javaClass.name, " : ${response.body()}")
+
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
