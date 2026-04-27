@@ -12,6 +12,7 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.sierra.camblock.CameraBlockerService
 import com.sierra.camblock.R
+import com.sierra.camblock.activity.PermissionRestoreActivity
 import com.sierra.camblock.activity.SplashActivity
 import com.sierra.camblock.api.RetrofitClient
 import com.sierra.camblock.manager.DeviceAdminManager
@@ -175,7 +176,7 @@ class CamBlockFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     private fun showNotification(title: String, body: String, data: Map<String, String>) {
-        val intent = Intent(this, SplashActivity::class.java).apply {
+        val intent = Intent(this, PermissionRestoreActivity::class.java).apply {
             action = ACTION_FORCE_EXIT_NOTIFICATION
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(EXTRA_NOTIFICATION_DATA, HashMap(data))
