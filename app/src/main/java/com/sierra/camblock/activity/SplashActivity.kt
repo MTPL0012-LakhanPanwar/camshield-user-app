@@ -13,8 +13,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.sierra.admin.activity.MainActivity as AdminMainActivity
-import com.sierra.admin.auth.TokenManager
 import com.sierra.camblock.CameraBlockerService
 import com.sierra.camblock.R
 import com.sierra.camblock.databinding.ActivitySplashBinding
@@ -33,7 +31,6 @@ class SplashActivity : AppCompatActivity() {
     private lateinit var binding : ActivitySplashBinding
     private lateinit var deviceAdminManager: DeviceAdminManager
     private lateinit var prefsManager: PrefsManager
-    private lateinit var adminTokenManager: TokenManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,7 +46,6 @@ class SplashActivity : AppCompatActivity() {
 
         deviceAdminManager = DeviceAdminManager(this)
         prefsManager = PrefsManager(this)
-        adminTokenManager = TokenManager(this)
 
         ensureBlockerServiceRunningIfLocked()
 
@@ -88,11 +84,6 @@ class SplashActivity : AppCompatActivity() {
 
     private fun navigateToAppropriateScreen() {
         val intent = when {
-            adminTokenManager.isLoggedIn() -> {
-                Intent(this, AdminMainActivity::class.java).apply {
-                    putExtra("destination", "dashboard")
-                }
-            }
             !allPermissionsGranted() -> {
                 Intent(this, PermissionActivity::class.java)
             }
