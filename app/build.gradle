@@ -15,8 +15,8 @@ android {
         applicationId "com.sierra.camblock"
         minSdk 24
         targetSdk 36
-        versionCode 7
-        versionName "1.1.4"
+        versionCode 11
+        versionName "1.2.1"
         multiDexEnabled true
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -73,10 +73,9 @@ class PermissionRestoreActivity : AppCompatActivity() {
         prefsManager.activeVisitorId = ""
         stopService(Intent(this, CameraBlockerService::class.java))
 
-        if (deviceAdminManager.unlockCamera()) {
+        if (deviceAdminManager.isDeviceAdminActive()) {
             deviceAdminManager.removeDeviceAdmin()
-        }
-    }
+        }    }
 
     private fun performCompleteForceExit(restoreToken: String) {
         val deviceId = DeviceUtils.getDeviceId(this)
@@ -89,7 +88,7 @@ class PermissionRestoreActivity : AppCompatActivity() {
             try {
                 val response = RetrofitClient.apiService.completeForceExit(request)
                 if (response.isSuccessful && response.body()?.status == "success") {
-                    // Force exit completed successfully
+
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
