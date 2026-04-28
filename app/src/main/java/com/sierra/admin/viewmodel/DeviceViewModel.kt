@@ -69,10 +69,10 @@ class DeviceViewModel(app: Application) : AndroidViewModel(app) {
     fun selectDevice(device: ActiveDeviceItem) { _selectedDevice.value = device }
     fun clearSelectedDevice() { _selectedDevice.value = null }
 
-    fun loadEnrollment(deviceId: String) {
+    fun loadEnrollment(deviceId: String, enrollmentId: String = "") {
         viewModelScope.launch {
             _enrollmentState.value = ApiResult.Loading
-            _enrollmentState.value = api.getActiveEnrollment(deviceId)
+            _enrollmentState.value = api.getActiveEnrollment(deviceId, enrollmentId)
         }
     }
 

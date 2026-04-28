@@ -212,8 +212,10 @@ class ApiService(context: Context) {
         } else ApiResult.Error(extractMessage(json), code)
     }
 
-    suspend fun getActiveEnrollment(deviceId: String): ApiResult<EnrollmentDetail> {
-        val (code, json) = client.get("/api/admin/devices/$deviceId/active-enrollment")
+    suspend fun getActiveEnrollment(deviceId: String, enrollmentId: String = ""): ApiResult<EnrollmentDetail> {
+        var path = "/api/admin/devices/enrollment?deviceId=${encode(deviceId)}"
+        if (enrollmentId.isNotBlank()) path += "&enrollmentId=${encode(enrollmentId)}"
+        val (code, json) = client.get(path)
         return if (code == 200 && json != null) {
             ApiResult.Success(parseEnrollment(json.getJSONObject("data")))
         } else ApiResult.Error(extractMessage(json), code)
@@ -408,6 +410,7 @@ class ApiService(context: Context) {
             device = mergedDevice.copy(status = status),
             visitorId = obj.optString("visitorId"),
             status = status,
+            enrollmentId = obj.optString("enrollmentId").takeIf { it.isNotBlank() },
             lastActivity = obj.optString("lastActivity").takeIf { it.isNotBlank() },
             pushToken = obj.optString("pushToken").takeIf { it.isNotBlank() },
             lastEnrollment = obj.optString("lastEnrollment").takeIf { it.isNotBlank() },
@@ -415,6 +418,7 @@ class ApiService(context: Context) {
             updatedAt = obj.optString("updatedAt").takeIf { it.isNotBlank() },
             currentFacility = obj.optJSONObject("currentFacility")?.let { parseFacility(it) },
             enrolledAt = obj.optString("enrolledAt").takeIf { it.isNotBlank() },
+            unenrolledAt = obj.optString("unenrolledAt").takeIf { it.isNotBlank() },
         )
     }
 
@@ -423,7 +427,8 @@ class ApiService(context: Context) {
         device = obj.optJSONObject("device")?.let { parseDeviceInfo(it) } ?: parseDeviceInfo(obj),
         facility = obj.optJSONObject("facility")?.let { parseFacility(it) } ?: FacilityData(),
         entryQRCode = obj.optJSONObject("entryQRCode")?.let { parseQR(it, "entry") },
-        enrolledAt = obj.optString("enrolledAt")
+        enrolledAt = obj.optString("enrolledAt"),
+        unenrolledAt = obj.optString("unenrolledAt").takeIf { it.isNotBlank() }
     )
 
     private fun buildFacilityBody(

@@ -1,7 +1,17 @@
 package com.camshield.admin.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -11,12 +21,31 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -49,15 +78,19 @@ fun DeviceDetailScreen(
 ) {
     val enrollmentState by viewModel.enrollmentState.collectAsState()
     val selectedDevice by viewModel.selectedDevice.collectAsState()
+    val selectedEnrollmentId = selectedDevice?.enrollmentId
+        ?: selectedDevice?.lastEnrollment
+        ?: ""
+
     val snackbarHostState = remember { SnackbarHostState() }
     val isRefreshing = enrollmentState is ApiResult.Loading && viewModel.enrollmentState.value != null
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
-        onRefresh = { viewModel.loadEnrollment(deviceId) }
+        onRefresh = { viewModel.loadEnrollment(deviceId, selectedEnrollmentId) }
     )
 
-    LaunchedEffect(deviceId) {
-        viewModel.loadEnrollment(deviceId)
+    LaunchedEffect(deviceId, selectedEnrollmentId) {
+        viewModel.loadEnrollment(deviceId, selectedEnrollmentId)
     }
 
     LaunchedEffect(enrollmentState) {
@@ -87,7 +120,11 @@ fun DeviceDetailScreen(
         },
         snackbarHost = {
             SnackbarHost(snackbarHostState) { data ->
-                Snackbar(snackbarData = data, containerColor = Color(0xFF2E7D32), contentColor = Color.White)
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = Color(0xFF2E7D32),
+                    contentColor = Color.White
+                )
             }
         }
     ) { padding ->
@@ -101,21 +138,32 @@ fun DeviceDetailScreen(
                 is ApiResult.Loading -> Box(
                     Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator(color = AccentBlue) }
+                ) {
+                    CircularProgressIndicator(color = AccentBlue)
+                }
 
                 is ApiResult.Error -> Box(
                     Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(24.dp)
+                    ) {
                         Text(
-                            if (state.code == 404) "No active enrollment found for this device." else state.message.ifBlank { "Couldn't load device details. Pull to refresh or try again." },
+                            if (state.code == 404) {
+                                "No active enrollment found for this device."
+                            } else {
+                                state.message.ifBlank { "Couldn't load device details. Pull to refresh or try again." }
+                            },
                             color = DangerRed,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            textAlign = TextAlign.Center
                         )
                         Spacer(Modifier.height(12.dp))
-                        Button(onClick = { viewModel.loadEnrollment(deviceId) },
-                            colors = ButtonDefaults.buttonColors(containerColor = AccentBlue)) {
+                        Button(
+                            onClick = { viewModel.loadEnrollment(deviceId, selectedEnrollmentId) },
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentBlue)
+                        ) {
                             Text("Retry")
                         }
                     }
@@ -157,7 +205,6 @@ private fun EnrollmentDetailContent(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Device Info Card
         DetailCard(title = "Device Information") {
             DetailRow("Device Name", enrollment.device.deviceName)
             DetailRow("Model", enrollment.device.model)
@@ -186,7 +233,6 @@ private fun EnrollmentDetailContent(
             }
         }
 
-        // Facility Info Card
         DetailCard(title = "Currently At Facility") {
             DetailRow("Facility", enrollment.facility.name)
             enrollment.facility.facilityId?.let { DetailRow("Facility ID", it) }
@@ -195,13 +241,18 @@ private fun EnrollmentDetailContent(
             }
         }
 
-        // Enrollment Info Card
         DetailCard(title = "Enrollment Details") {
             enrollment.entryQRCode?.let { qr ->
                 DetailRow("Entry QR Code", qr.name.ifBlank { qr.id })
             }
-            if (enrollment.enrolledAt.isNotBlank()) {
-                DetailRow("Enrolled At", formatDateTimeFriendly(enrollment.enrolledAt))
+            val enrolledAt = enrollment.enrolledAt.ifBlank { selectedDevice?.enrolledAt.orEmpty() }
+            if (enrolledAt.isNotBlank()) {
+                DetailRow("Enrolled At", formatDateTimeFriendly(enrolledAt))
+            }
+
+            val unenrolledAt = enrollment.unenrolledAt ?: selectedDevice?.unenrolledAt
+            if (!unenrolledAt.isNullOrBlank()) {
+                DetailRow("Unenrolled At", formatDateTimeFriendly(unenrolledAt))
             }
         }
     }
@@ -235,7 +286,13 @@ private fun DetailCard(title: String, content: @Composable ColumnScope.() -> Uni
         colors = CardDefaults.cardColors(containerColor = CardBg)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(title, color = AccentBlue, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
+            Text(
+                title,
+                color = AccentBlue,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.5.sp
+            )
             Spacer(Modifier.height(12.dp))
             content()
         }
@@ -268,7 +325,7 @@ private fun DetailRow(
                 fontSize = if (smallText) 11.sp else 13.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(0.55f),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Start
+                textAlign = TextAlign.Start
             )
         }
     }
