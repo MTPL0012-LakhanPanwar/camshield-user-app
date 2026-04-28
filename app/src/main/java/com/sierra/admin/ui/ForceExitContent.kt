@@ -10,15 +10,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -149,11 +146,13 @@ private fun InfoTag(text: String) {
             .background(FxVisitorTagBg, RoundedCornerShape(4.dp))
             .padding(horizontal = 8.dp, vertical = 2.dp)
     ) {
-        Text(text,
+        Text(
+            text,
             color = FxVisitorTagText,
             fontSize = 11.sp,
             lineHeight = 17.sp,
-            fontWeight = FontWeight.SemiBold)
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 
@@ -226,8 +225,10 @@ private fun ForceExitFilterHeader(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        val dateTint = if (selectedDate.isNullOrBlank()) FxTextGray else Color(0xFFA7CBFF)
-                        Icon(Icons.Default.DateRange,
+                        val dateTint =
+                            if (selectedDate.isNullOrBlank()) FxTextGray else Color(0xFFA7CBFF)
+                        Icon(
+                            Icons.Default.DateRange,
                             contentDescription = null,
                             tint = dateTint,
                             modifier = Modifier.size(16.dp)
@@ -235,7 +236,9 @@ private fun ForceExitFilterHeader(
 
                         Text(
                             text = formatDateFilterLabel(selectedDate),
-                            color = if (selectedDate.isNullOrBlank()) FxTextGray else Color(0xFFA7CBFF),
+                            color = if (selectedDate.isNullOrBlank()) FxTextGray else Color(
+                                0xFFA7CBFF
+                            ),
                             fontSize = 12.sp,
                             lineHeight = 16.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -292,7 +295,10 @@ fun ForceExitContent(
     LaunchedEffect(searchQuery) { searchFlow.value = searchQuery }
 
     LaunchedEffect(Unit) {
-        if (viewModel.items.isEmpty()) viewModel.loadDevices(reset = true, date = selectedDate.orEmpty())
+        if (viewModel.items.isEmpty()) viewModel.loadDevices(
+            reset = true,
+            date = selectedDate.orEmpty()
+        )
     }
 
     LaunchedEffect(listState) {
@@ -354,7 +360,8 @@ fun ForceExitContent(
                     confirmButton = {
                         TextButton(
                             onClick = {
-                                val pickedDate = datePickerState.selectedDateMillis?.let(::formatApiDate)
+                                val pickedDate =
+                                    datePickerState.selectedDateMillis?.let(::formatApiDate)
                                 showDatePicker = false
                                 if (!pickedDate.isNullOrBlank() && pickedDate != selectedDate) {
                                     selectedDate = pickedDate
@@ -387,7 +394,10 @@ fun ForceExitContent(
 
                 listState is ApiResult.Error && viewModel.items.isEmpty() -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(24.dp)
+                        ) {
                             val err = (listState as ApiResult.Error)
                             Text(
                                 if (err.code == 404) {
@@ -409,12 +419,19 @@ fun ForceExitContent(
 
                 viewModel.items.isEmpty() && !isLoading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("There are currently no active devices connected", color = FxTextGray, fontSize = 16.sp)
+                        Text(
+                            "There are currently no active devices connected",
+                            color = FxTextGray,
+                            fontSize = 16.sp
+                        )
                     }
                 }
 
                 else -> {
-                    LazyColumn(state = lazyListState, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    LazyColumn(
+                        state = lazyListState,
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
                         items(
                             items = viewModel.items,
                             key = { it.id }
@@ -429,8 +446,16 @@ fun ForceExitContent(
                         }
                         if (isLoading) {
                             item {
-                                Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                    CircularProgressIndicator(color = FxAccentBlue, modifier = Modifier.size(24.dp))
+                                Box(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = FxAccentBlue,
+                                        modifier = Modifier.size(24.dp)
+                                    )
                                 }
                             }
                         }
@@ -497,7 +522,12 @@ private fun ActiveDeviceCardItem(device: ActiveDeviceItem, onClick: () -> Unit) 
                         .background(FxSearchBg, RoundedCornerShape(8.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.PhoneAndroid, null, tint = Color(0xFF9FC6FF), modifier = Modifier.size(22.dp))
+                    Icon(
+                        Icons.Default.PhoneAndroid,
+                        null,
+                        tint = Color(0xFF9FC6FF),
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
 
                 Column(
@@ -646,7 +676,13 @@ private fun previewDeviceItem(
     )
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF0B101F, widthDp = 412, heightDp = 915, name = "Force Exit Screen Preview")
+@Preview(
+    showBackground = true,
+    backgroundColor = 0xFF0B101F,
+    widthDp = 412,
+    heightDp = 915,
+    name = "Force Exit Screen Preview"
+)
 @Composable
 private fun ForceExitScreenPreview() {
     var searchQuery by remember { mutableStateOf("") }
@@ -701,7 +737,12 @@ private fun ForceExitScreenPreview() {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF0B101F, widthDp = 412, name = "Device Card Active")
+@Preview(
+    showBackground = true,
+    backgroundColor = 0xFF0B101F,
+    widthDp = 412,
+    name = "Device Card Active"
+)
 @Composable
 private fun ActiveDeviceCardPreviewActive() {
     Box(modifier = Modifier.padding(16.dp)) {
@@ -720,7 +761,12 @@ private fun ActiveDeviceCardPreviewActive() {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF0B101F, widthDp = 412, name = "Device Card Inactive")
+@Preview(
+    showBackground = true,
+    backgroundColor = 0xFF0B101F,
+    widthDp = 412,
+    name = "Device Card Inactive"
+)
 @Composable
 private fun ActiveDeviceCardPreviewInactive() {
     Box(modifier = Modifier.padding(16.dp)) {
@@ -739,7 +785,8 @@ private fun ActiveDeviceCardPreviewInactive() {
     }
 }
 
-private val friendlyFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy, h:mm a")
+private val friendlyFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("dd MMM yyyy, h:mm a")
 
 private fun formatDateFilterLabel(raw: String?): String {
     if (raw.isNullOrBlank()) return "Date"
