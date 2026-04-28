@@ -75,6 +75,7 @@ import com.sierra.admin.modal.DeviceInfo
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -288,7 +289,8 @@ fun ForceExitContent(
 
     val searchFlow = remember { MutableStateFlow("") }
     LaunchedEffect(Unit) {
-        searchFlow.debounce(400).collect { q ->
+        // Skip initial StateFlow emission to avoid duplicate first load.
+        searchFlow.drop(1).debounce(400).collect { q ->
             viewModel.loadDevices(1, q, selectedDateForSearch.orEmpty(), reset = true)
         }
     }
