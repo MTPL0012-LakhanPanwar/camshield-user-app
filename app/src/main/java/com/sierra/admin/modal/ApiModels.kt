@@ -95,7 +95,8 @@ data class ActiveDeviceItem(
     val lastEnrollment: String? = null,
     val createdAt: String? = null,
     val updatedAt: String? = null,
-    val currentFacility: FacilityData? = null
+    val currentFacility: FacilityData? = null,
+    val enrolledAt: String? = null
 )
 
 data class EnrollmentDetail(

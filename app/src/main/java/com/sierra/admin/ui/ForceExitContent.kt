@@ -495,7 +495,7 @@ private fun ActiveDeviceCardItem(device: ActiveDeviceItem, onClick: () -> Unit) 
         normalizedPlatform
     }
     val visitorLabel = device.visitorId.ifBlank { "Visitor-NA" }
-    val lastSeen = device.lastActivity ?: device.updatedAt ?: device.createdAt
+    val lastSeen = device.enrolledAt ?: device.lastActivity ?: device.updatedAt ?: device.createdAt
     val formattedLastSeen = lastSeen?.let {
         formatDateTimeFriendly(it).replace("AM", "am").replace("PM", "pm")
     } ?: "No activity yet"

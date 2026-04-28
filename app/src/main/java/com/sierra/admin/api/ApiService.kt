@@ -413,7 +413,8 @@ class ApiService(context: Context) {
             lastEnrollment = obj.optString("lastEnrollment").takeIf { it.isNotBlank() },
             createdAt = obj.optString("createdAt").takeIf { it.isNotBlank() },
             updatedAt = obj.optString("updatedAt").takeIf { it.isNotBlank() },
-            currentFacility = obj.optJSONObject("currentFacility")?.let { parseFacility(it) }
+            currentFacility = obj.optJSONObject("currentFacility")?.let { parseFacility(it) },
+            enrolledAt = obj.optString("enrolledAt").takeIf { it.isNotBlank() },
         )
     }
 
