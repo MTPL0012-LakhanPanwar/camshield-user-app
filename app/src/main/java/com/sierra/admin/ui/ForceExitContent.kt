@@ -168,7 +168,7 @@ private fun ForceExitFilterHeader(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 16.dp),
+            .padding(bottom = 8.dp),
         shape = RoundedCornerShape(22.dp),
         color = FxPanelBg,
         border = BorderStroke(1.dp, FxPanelBorder)
@@ -320,7 +320,7 @@ fun ForceExitContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp)
         ) {
             ForceExitFilterHeader(
                 searchQuery = searchQuery,
@@ -431,13 +431,6 @@ fun ForceExitContent(
                             item {
                                 Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                                     CircularProgressIndicator(color = FxAccentBlue, modifier = Modifier.size(24.dp))
-                                }
-                            }
-                        }
-                        if (viewModel.isLastPage && viewModel.items.isNotEmpty()) {
-                            item {
-                                Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) {
-                                    Text("${viewModel.items.size} active devices", color = FxTextGray, fontSize = 12.sp)
                                 }
                             }
                         }
