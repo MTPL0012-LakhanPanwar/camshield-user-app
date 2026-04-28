@@ -602,7 +602,7 @@ private fun ActiveDeviceCardItem(device: ActiveDeviceItem, onClick: () -> Unit) 
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "VISITOR",
+                        text = "VISITOR ID",
                         color = FxLabelText,
                         fontWeight = FontWeight.Bold,
                         fontSize = 10.sp,
