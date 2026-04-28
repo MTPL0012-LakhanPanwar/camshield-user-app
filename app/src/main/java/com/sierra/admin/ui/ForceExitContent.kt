@@ -1,6 +1,7 @@
 package com.camshield.admin.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,6 +10,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
@@ -31,8 +33,10 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
@@ -75,10 +79,13 @@ fun ForceExitContent(
     onUnauthorized: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    var selectedDate by remember { mutableStateOf<String?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
     val listState by viewModel.listState.collectAsState()
     val lazyListState = rememberLazyListState()
     val isLoading = listState is ApiResult.Loading
     val isRefreshing = isLoading && viewModel.items.isNotEmpty()
+    val selectedDateForSearch by rememberUpdatedState(selectedDate)
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
         onRefresh = { viewModel.refreshDevices() }
@@ -87,13 +94,13 @@ fun ForceExitContent(
     val searchFlow = remember { MutableStateFlow("") }
     LaunchedEffect(Unit) {
         searchFlow.debounce(400).collect { q ->
-            viewModel.loadDevices(1, q, reset = true)
+            viewModel.loadDevices(1, q, selectedDateForSearch.orEmpty(), reset = true)
         }
     }
     LaunchedEffect(searchQuery) { searchFlow.value = searchQuery }
 
     LaunchedEffect(Unit) {
-        if (viewModel.items.isEmpty()) viewModel.loadDevices(reset = true)
+        if (viewModel.items.isEmpty()) viewModel.loadDevices(reset = true, date = selectedDate.orEmpty())
     }
 
     LaunchedEffect(listState) {
@@ -145,7 +152,93 @@ fun ForceExitContent(
                     unfocusedBorderColor = Color.Transparent
                 )
             )
+
+            Surface(
+                modifier = Modifier
+                    .height(56.dp)
+                    .defaultMinSize(minWidth = 96.dp)
+                    .border(
+                        width = 1.dp,
+                        color = if (selectedDate.isNullOrBlank()) Color.Transparent else FxAccentBlue,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .clickable { showDatePicker = true },
+                shape = RoundedCornerShape(12.dp),
+                color = FxCardBg
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp)
+                        .fillMaxHeight(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(Icons.Default.DateRange, contentDescription = null, tint = FxTextGray)
+                    Text(
+                        text = selectedDate ?: "Date",
+                        color = if (selectedDate.isNullOrBlank()) FxTextGray else Color.White,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+
+            if (!selectedDate.isNullOrBlank()) {
+                TextButton(
+                    onClick = {
+                        selectedDate = null
+                        viewModel.loadDevices(1, searchQuery, reset = true)
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = FxTextGray)
+                ) {
+                    Text("Clear")
+                }
+            }
         }
+
+            if (showDatePicker) {
+                val todayUtcMillis = remember {
+                    LocalDate.now(ZoneOffset.UTC)
+                        .atStartOfDay()
+                        .toInstant(ZoneOffset.UTC)
+                        .toEpochMilli()
+                }
+                val datePickerState = rememberDatePickerState(
+                    initialSelectedDateMillis = selectedDate?.let(::parseApiDateToUtcMillis),
+                    selectableDates = object : SelectableDates {
+                        override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                            return utcTimeMillis <= todayUtcMillis
+                        }
+                    }
+                )
+
+                DatePickerDialog(
+                    onDismissRequest = { showDatePicker = false },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                val pickedDate = datePickerState.selectedDateMillis?.let(::formatApiDate)
+                                showDatePicker = false
+                                if (!pickedDate.isNullOrBlank() && pickedDate != selectedDate) {
+                                    selectedDate = pickedDate
+                                    viewModel.loadDevices(1, searchQuery, pickedDate, reset = true)
+                                }
+                            }
+                        ) {
+                            Text("Apply")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDatePicker = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                ) {
+                    DatePicker(
+                        state = datePickerState,
+                        showModeToggle = false
+                    )
+                }
+            }
 
             when {
                 isLoading && viewModel.items.isEmpty() -> {
@@ -290,6 +383,20 @@ private fun ActiveDeviceCardItem(device: ActiveDeviceItem, onClick: () -> Unit) 
 }
 
 private val friendlyFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy, h:mm a")
+
+private fun formatApiDate(utcTimeMillis: Long): String {
+    return Instant.ofEpochMilli(utcTimeMillis)
+        .atOffset(ZoneOffset.UTC)
+        .toLocalDate()
+        .format(DateTimeFormatter.ISO_LOCAL_DATE)
+}
+
+private fun parseApiDateToUtcMillis(raw: String): Long? = runCatching {
+    LocalDate.parse(raw, DateTimeFormatter.ISO_LOCAL_DATE)
+        .atStartOfDay()
+        .toInstant(ZoneOffset.UTC)
+        .toEpochMilli()
+}.getOrNull()
 
 private fun formatDateTimeFriendly(raw: String): String = runCatching {
     friendlyFormatter.format(ZonedDateTime.ofInstant(Instant.parse(raw), ZoneId.systemDefault()))

@@ -191,15 +191,12 @@ class ApiService(context: Context) {
     suspend fun getActiveDevices(
         page: Int = 1,
         limit: Int = 10,
-        q: String = ""
+        q: String = "",
+        date: String = ""
     ): ApiResult<PaginatedData<ActiveDeviceItem>> {
-        val (code, json) = client.get(
-            "/api/admin/devices/active?page=$page&limit=$limit&q=${
-                encode(
-                    q
-                )
-            }"
-        )
+        var path = "/api/admin/v2/devices/active?page=$page&limit=$limit&q=${encode(q)}"
+        if (date.isNotBlank()) path += "&date=${encode(date)}"
+        val (code, json) = client.get(path)
         return if (code == 200 && json != null) {
             val data = json.getJSONObject("data")
             val arr = data.getJSONArray("items")

@@ -23,6 +23,7 @@ class DeviceViewModel(app: Application) : AndroidViewModel(app) {
     var totalPages = 1; private set
     var isLastPage = false; private set
     private var currentQuery = ""
+    private var currentDateFilter = ""
 
     private val _enrollmentState = MutableStateFlow<ApiResult<EnrollmentDetail>?>(null)
     val enrollmentState: StateFlow<ApiResult<EnrollmentDetail>?> = _enrollmentState
@@ -33,7 +34,7 @@ class DeviceViewModel(app: Application) : AndroidViewModel(app) {
     private val _selectedDevice = MutableStateFlow<ActiveDeviceItem?>(null)
     val selectedDevice: StateFlow<ActiveDeviceItem?> = _selectedDevice
 
-    fun loadDevices(page: Int = 1, q: String = "", reset: Boolean = false) {
+    fun loadDevices(page: Int = 1, q: String = "", date: String = "", reset: Boolean = false) {
         viewModelScope.launch {
             if (reset || page == 1) {
                 items.clear()
@@ -41,8 +42,9 @@ class DeviceViewModel(app: Application) : AndroidViewModel(app) {
                 isLastPage = false
             }
             currentQuery = q
+            currentDateFilter = date
             _listState.value = ApiResult.Loading
-            when (val result = api.getActiveDevices(page, q = q)) {
+            when (val result = api.getActiveDevices(page, q = q, date = date)) {
                 is ApiResult.Success -> {
                     currentPage = result.data.page
                     totalPages = result.data.totalPages
@@ -58,11 +60,11 @@ class DeviceViewModel(app: Application) : AndroidViewModel(app) {
 
     fun loadNextPage() {
         if (!isLastPage && _listState.value !is ApiResult.Loading) {
-            loadDevices(currentPage + 1, currentQuery)
+            loadDevices(currentPage + 1, currentQuery, currentDateFilter)
         }
     }
 
-    fun refreshDevices() = loadDevices(1, currentQuery, reset = true)
+    fun refreshDevices() = loadDevices(1, currentQuery, currentDateFilter, reset = true)
 
     fun selectDevice(device: ActiveDeviceItem) { _selectedDevice.value = device }
     fun clearSelectedDevice() { _selectedDevice.value = null }
