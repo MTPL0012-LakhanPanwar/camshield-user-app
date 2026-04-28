@@ -210,7 +210,7 @@ private fun ForceExitFilterHeader(
             Row(horizontalArrangement = Arrangement.Start) {
                 Surface(
                     modifier = Modifier
-                        .height(48.dp)
+                        .height(IntrinsicSize.Max)
                         .clickable { onDateClick() },
                     shape = RoundedCornerShape(27.dp),
                     color = if (selectedDate.isNullOrBlank()) FxChipBg else FxChipBgActive,
@@ -222,12 +222,17 @@ private fun ForceExitFilterHeader(
                     Row(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .padding(start = 12.dp, end = 12.dp),
+                            .padding(vertical = 6.dp, horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         val dateTint = if (selectedDate.isNullOrBlank()) FxTextGray else Color(0xFFA7CBFF)
-                        Icon(Icons.Default.DateRange, contentDescription = null, tint = dateTint)
+                        Icon(Icons.Default.DateRange,
+                            contentDescription = null,
+                            tint = dateTint,
+                            modifier = Modifier.size(16.dp)
+                        )
+
                         Text(
                             text = formatDateFilterLabel(selectedDate),
                             color = if (selectedDate.isNullOrBlank()) FxTextGray else Color(0xFFA7CBFF),
@@ -684,7 +689,7 @@ private fun ForceExitScreenPreview() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(12.dp)
         ) {
             ForceExitFilterHeader(
                 searchQuery = searchQuery,
