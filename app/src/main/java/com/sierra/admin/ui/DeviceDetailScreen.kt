@@ -220,9 +220,15 @@ private fun EnrollmentDetailContent(
                 ?.takeIf { it.isNotBlank() }
                 ?.let { DetailRow("Visitor ID", it) }
             DetailRow("Status", enrollment.device.status) { text ->
+                val isActive = text.equals("active", ignoreCase = true)
+                val isInactive = text.equals("inactive", ignoreCase = true)
                 Text(
-                    text = text.uppercase(),
-                    color = if (text.lowercase() == "active") StatusGreen else DangerRed,
+                    text = when {
+                        isActive -> "ENTRY DONE"
+                        isInactive -> "EXIT LOGGED"
+                        else -> text.uppercase()
+                    },
+                    color = if (isActive) StatusGreen else DangerRed,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -247,12 +253,12 @@ private fun EnrollmentDetailContent(
             }
             val enrolledAt = enrollment.enrolledAt.ifBlank { selectedDevice?.enrolledAt.orEmpty() }
             if (enrolledAt.isNotBlank()) {
-                DetailRow("Enrolled At", formatDateTimeFriendly(enrolledAt))
+                DetailRow("Entered At", formatDateTimeFriendly(enrolledAt))
             }
 
             val unenrolledAt = enrollment.unenrolledAt ?: selectedDevice?.unenrolledAt
             if (!unenrolledAt.isNullOrBlank()) {
-                DetailRow("Unenrolled At", formatDateTimeFriendly(unenrolledAt))
+                DetailRow("Exited At", formatDateTimeFriendly(unenrolledAt))
             }
         }
     }
