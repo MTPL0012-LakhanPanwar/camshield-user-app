@@ -1,34 +1,80 @@
 package com.camshield.admin.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Android
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.camshield.admin.viewmodel.DeviceViewModel
 import com.sierra.admin.modal.ActiveDeviceItem
 import com.sierra.admin.modal.ApiResult
+import com.sierra.admin.modal.DeviceInfo
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.debounce
@@ -44,19 +90,55 @@ private val FxBgDark = Color(0xFF0B101F)
 private val FxCardBg = Color(0xFF161C2C)
 private val FxAccentBlue = Color(0xFF2196F3)
 private val FxTextGray = Color(0xFF8A92A6)
-private val FxStatusGreen = Color(0xFF4CAF50)
+
+private val FxPanelBg = Color(0xFF121A2B)
+private val FxPanelBorder = Color(0xFF28324A)
+private val FxSearchBg = Color(0xFF1A2336)
+private val FxChipBg = Color(0xFF1A2234)
+private val FxChipBgActive = Color(0xFF24344F)
+private val FxChipBorder = Color(0xFF303A52)
+private val FxChipBorderActive = Color(0xFF47608E)
+
+private val FxDeviceCardBg = Color(0xFF121B2D)
+private val FxDeviceCardBorder = Color(0xFF2A3450)
+private val FxDeviceCardDivider = Color(0xFF2B354C)
+private val FxPrimaryText = Color(0xFFE6ECF8)
+private val FxSecondaryText = Color(0xFFB5BECC)
+private val FxLabelText = Color(0xFF7B889F)
+private val FxVisitorTagBg = Color(0xFF27354C)
+private val FxVisitorTagText = Color(0xFFA9CCFF)
+
+private val FxStatusActiveText = Color(0xFF7BEEA8)
+private val FxStatusInactiveText = Color(0xFFFFB3A3)
+private val FxStatusActiveBg = Color(0xFF1A4A33)
+private val FxStatusInactiveBg = Color(0xFF4A2A2A)
+private val FxStatusActiveBorder = Color(0xFF2E7E58)
+private val FxStatusInactiveBorder = Color(0xFF8A2F3A)
 
 @Composable
 private fun FxStatusBadge(status: String) {
     val isActive = status.equals("active", ignoreCase = true)
-    val bg = if (isActive) FxStatusGreen.copy(alpha = 0.15f) else Color(0xFF455A64).copy(alpha = 0.3f)
-    val fg = if (isActive) FxStatusGreen else Color(0xFFE0E0E0)
+    val bg = if (isActive) FxStatusActiveBg else FxStatusInactiveBg
+    val border = if (isActive) FxStatusActiveBorder else FxStatusInactiveBorder
+    val fg = if (isActive) FxStatusActiveText else FxStatusInactiveText
+    val label = if (isActive) "ENTRY DONE" else "EXIT LOGGED"
+
     Box(
         modifier = Modifier
-            .background(bg, RoundedCornerShape(12.dp))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .border(BorderStroke(1.dp, border), RoundedCornerShape(46.dp))
+            .background(bg, RoundedCornerShape(46.dp))
+            .padding(vertical = 4.dp, horizontal = 12.dp),
+        contentAlignment = Alignment.CenterStart
     ) {
-        Text(status.ifBlank { "UNKNOWN" }.uppercase(), color = fg, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(
+            text = label,
+            color = fg,
+            fontSize = 10.sp,
+            lineHeight = 15.sp,
+            letterSpacing = 1.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -64,10 +146,115 @@ private fun FxStatusBadge(status: String) {
 private fun InfoTag(text: String) {
     Box(
         modifier = Modifier
-            .background(Color(0xFF20293A), RoundedCornerShape(6.dp))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .background(FxVisitorTagBg, RoundedCornerShape(4.dp))
+            .padding(horizontal = 8.dp, vertical = 2.dp)
     ) {
-        Text(text, color = Color.White, fontSize = 11.sp)
+        Text(text,
+            color = FxVisitorTagText,
+            fontSize = 11.sp,
+            lineHeight = 17.sp,
+            fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun ForceExitFilterHeader(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    selectedDate: String?,
+    onDateClick: () -> Unit,
+    onClearDate: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp),
+        shape = RoundedCornerShape(22.dp),
+        color = FxPanelBg,
+        border = BorderStroke(1.dp, FxPanelBorder)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                placeholder = {
+                    Text(
+                        "Search by device or visitor ID...",
+                        color = FxTextGray,
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = FxTextGray) },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedContainerColor = FxSearchBg,
+                    unfocusedContainerColor = FxSearchBg,
+                    focusedBorderColor = FxChipBorderActive,
+                    unfocusedBorderColor = Color.Transparent
+                )
+            )
+
+            Row(horizontalArrangement = Arrangement.Start) {
+                Surface(
+                    modifier = Modifier
+                        .height(48.dp)
+                        .clickable { onDateClick() },
+                    shape = RoundedCornerShape(27.dp),
+                    color = if (selectedDate.isNullOrBlank()) FxChipBg else FxChipBgActive,
+                    border = BorderStroke(
+                        1.dp,
+                        if (selectedDate.isNullOrBlank()) FxChipBorder else FxChipBorderActive
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .padding(start = 12.dp, end = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val dateTint = if (selectedDate.isNullOrBlank()) FxTextGray else Color(0xFFA7CBFF)
+                        Icon(Icons.Default.DateRange, contentDescription = null, tint = dateTint)
+                        Text(
+                            text = formatDateFilterLabel(selectedDate),
+                            color = if (selectedDate.isNullOrBlank()) FxTextGray else Color(0xFFA7CBFF),
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        if (!selectedDate.isNullOrBlank()) {
+                            IconButton(
+                                onClick = onClearDate,
+                                modifier = Modifier.size(30.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear date",
+                                    tint = FxTextGray,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -130,70 +317,16 @@ fun ForceExitContent(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("Search by device or visitor ID…", color = FxTextGray) },
-                leadingIcon = { Icon(Icons.Default.Search, null, tint = FxTextGray) },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedContainerColor = FxCardBg,
-                    unfocusedContainerColor = FxCardBg,
-                    focusedBorderColor = FxAccentBlue,
-                    unfocusedBorderColor = Color.Transparent
-                )
+            ForceExitFilterHeader(
+                searchQuery = searchQuery,
+                onSearchQueryChange = { searchQuery = it },
+                selectedDate = selectedDate,
+                onDateClick = { showDatePicker = true },
+                onClearDate = {
+                    selectedDate = null
+                    viewModel.loadDevices(1, searchQuery, reset = true)
+                }
             )
-
-            Surface(
-                modifier = Modifier
-                    .height(56.dp)
-                    .defaultMinSize(minWidth = 96.dp)
-                    .border(
-                        width = 1.dp,
-                        color = if (selectedDate.isNullOrBlank()) Color.Transparent else FxAccentBlue,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .clickable { showDatePicker = true },
-                shape = RoundedCornerShape(12.dp),
-                color = FxCardBg
-            ) {
-                Row(
-                    modifier = Modifier
-                        .padding(horizontal = 12.dp)
-                        .fillMaxHeight(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(Icons.Default.DateRange, contentDescription = null, tint = FxTextGray)
-                    Text(
-                        text = selectedDate ?: "Date",
-                        color = if (selectedDate.isNullOrBlank()) FxTextGray else Color.White,
-                        fontSize = 13.sp
-                    )
-                }
-            }
-
-            if (!selectedDate.isNullOrBlank()) {
-                TextButton(
-                    onClick = {
-                        selectedDate = null
-                        viewModel.loadDevices(1, searchQuery, reset = true)
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = FxTextGray)
-                ) {
-                    Text("Clear")
-                }
-            }
-        }
 
             if (showDatePicker) {
                 val todayUtcMillis = remember {
@@ -246,14 +379,19 @@ fun ForceExitContent(
                         CircularProgressIndicator(color = FxAccentBlue)
                     }
                 }
+
                 listState is ApiResult.Error && viewModel.items.isEmpty() -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
                             val err = (listState as ApiResult.Error)
                             Text(
-                                if (err.code == 404) "There are currently no active devices connected." else err.message.ifBlank { "Couldn’t load devices. Pull to refresh or try again." },
+                                if (err.code == 404) {
+                                    "There are currently no active devices connected."
+                                } else {
+                                    err.message.ifBlank { "Couldn’t load devices. Pull to refresh or try again." }
+                                },
                                 color = Color(0xFFEF5350),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                textAlign = TextAlign.Center
                             )
                             Spacer(Modifier.height(12.dp))
                             Button(
@@ -263,13 +401,15 @@ fun ForceExitContent(
                         }
                     }
                 }
+
                 viewModel.items.isEmpty() && !isLoading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text("There are currently no active devices connected", color = FxTextGray, fontSize = 16.sp)
                     }
                 }
+
                 else -> {
-                    LazyColumn(state = lazyListState, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    LazyColumn(state = lazyListState, verticalArrangement = Arrangement.spacedBy(14.dp)) {
                         items(
                             items = viewModel.items,
                             key = { it.id }
@@ -315,74 +455,307 @@ fun ForceExitContent(
 
 @Composable
 private fun ActiveDeviceCardItem(device: ActiveDeviceItem, onClick: () -> Unit) {
+    val modelAndManufacturer = buildString {
+        append(device.device.model.ifBlank { "Unknown Model" })
+        if (device.device.manufacturer.isNotBlank()) {
+            append(" • ")
+            append(device.device.manufacturer)
+        }
+    }
+    val platformTitle = device.device.platform.ifBlank { "android" }
+    val normalizedPlatform = platformTitle.replaceFirstChar {
+        if (it.isLowerCase()) it.titlecase() else it.toString()
+    }
+    val platformDisplay = if (device.device.osVersion.isNotBlank()) {
+        "$normalizedPlatform OS ${device.device.osVersion}"
+    } else {
+        normalizedPlatform
+    }
+    val visitorLabel = device.visitorId.ifBlank { "Visitor-NA" }
+    val lastSeen = device.lastActivity ?: device.updatedAt ?: device.createdAt
+    val formattedLastSeen = lastSeen?.let {
+        formatDateTimeFriendly(it).replace("AM", "am").replace("PM", "pm")
+    } ?: "No activity yet"
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = FxCardBg)
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = FxDeviceCardBg),
+        border = BorderStroke(1.dp, FxDeviceCardBorder)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(FxAccentBlue.copy(alpha = 0.15f), RoundedCornerShape(24.dp)),
-                contentAlignment = Alignment.Center
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(Icons.Default.PhoneAndroid, null, tint = FxAccentBlue, modifier = Modifier.size(26.dp))
-            }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        device.device.deviceName.ifBlank { "Unknown Device" },
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 15.sp,
-                        modifier = Modifier.weight(1f)
-                    )
-                    FxStatusBadge(device.status.ifBlank { device.device.status })
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(FxSearchBg, RoundedCornerShape(8.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.PhoneAndroid, null, tint = Color(0xFF9FC6FF), modifier = Modifier.size(22.dp))
                 }
-                Text(
-                    device.device.model.ifBlank { "Model: Unknown" },
-                    color = FxTextGray,
-                    fontSize = 12.sp
-                )
-                val platform = device.device.platform.ifBlank { "Unknown" }
-                val platformLabel = if (device.device.osVersion.isNotBlank()) " • OS ${device.device.osVersion}" else ""
-                Text(
-                    "Platform: ${platform.uppercase()}$platformLabel",
-                    color = FxTextGray,
-                    fontSize = 12.sp
-                )
-                val visitorLabel = device.visitorId.ifBlank { "Unknown" }
-                InfoTag("Visitor: $visitorLabel")
-                val lastSeen = device.lastActivity ?: device.updatedAt ?: device.createdAt
-                val formattedLastSeen = lastSeen?.let { formatDateTimeFriendly(it) } ?: "—"
 
-                Text(
-                    text = "Last active: $formattedLastSeen",
-                    color = FxTextGray,
-                    fontSize = 12.sp
-                )
-                device.currentFacility?.let {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = device.device.deviceName.ifBlank { "Unknown" },
+                        color = FxPrimaryText,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        lineHeight = 24.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = modelAndManufacturer,
+                        color = FxSecondaryText,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                FxStatusBadge(device.status.ifBlank { device.device.status })
+            }
+
+            HorizontalDivider(color = FxDeviceCardDivider, thickness = 1.dp)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(18.dp)
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "PLATFORM",
+                        color = FxLabelText,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp,
+                        lineHeight = 15.sp,
+                        letterSpacing = 0.5.sp
+                    )
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("At:", color = FxTextGray, fontSize = 12.sp)
-                        Text(it.name, color = FxAccentBlue, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        Icon(
+                            imageVector = Icons.Default.Android,
+                            contentDescription = null,
+                            tint = Color(0xFF9FC6FF),
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Text(
+                            text = platformDisplay,
+                            color = FxPrimaryText,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 14.sp,
+                            lineHeight = 20.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "ASSIGNED TO",
+                        color = FxLabelText,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp,
+                        lineHeight = 15.sp,
+                        letterSpacing = 0.5.sp
+                    )
+
+                    InfoTag(visitorLabel)
+                }
+            }
+
+            HorizontalDivider(color = FxDeviceCardDivider, thickness = 1.dp)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.History,
+                    contentDescription = null,
+                    tint = FxLabelText,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = formattedLastSeen,
+                    color = FxSecondaryText,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = Color(0xFF93BFFF),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
+}
+
+private fun previewDeviceItem(
+    id: String,
+    name: String,
+    model: String,
+    manufacturer: String,
+    status: String,
+    visitorId: String,
+    lastActivity: String
+): ActiveDeviceItem {
+    return ActiveDeviceItem(
+        id = id,
+        status = status,
+        visitorId = visitorId,
+        lastActivity = lastActivity,
+        createdAt = lastActivity,
+        updatedAt = lastActivity,
+        device = DeviceInfo(
+            deviceId = id,
+            deviceName = name,
+            platform = "android",
+            model = model,
+            status = status,
+            manufacturer = manufacturer,
+            osVersion = "16"
+        )
+    )
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0B101F, widthDp = 412, heightDp = 915, name = "Force Exit Screen Preview")
+@Composable
+private fun ForceExitScreenPreview() {
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedDate by remember { mutableStateOf<String?>("2026-04-28") }
+    val previewItems = remember {
+        listOf(
+            previewDeviceItem(
+                id = "device-1",
+                name = "e3q",
+                model = "SM-S928B",
+                manufacturer = "Samsung Galaxy",
+                status = "inactive",
+                visitorId = "Visitor-7",
+                lastActivity = "2026-04-27T11:33:00Z"
+            ),
+            previewDeviceItem(
+                id = "device-2",
+                name = "k9",
+                model = "Pixel 9 Pro",
+                manufacturer = "Google",
+                status = "active",
+                visitorId = "Visitor-4",
+                lastActivity = "2026-04-28T09:18:00Z"
+            )
+        )
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(FxBgDark)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            ForceExitFilterHeader(
+                searchQuery = searchQuery,
+                onSearchQueryChange = { searchQuery = it },
+                selectedDate = selectedDate,
+                onDateClick = {},
+                onClearDate = { selectedDate = null }
+            )
+
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                items(previewItems, key = { it.id }) { item ->
+                    ActiveDeviceCardItem(device = item, onClick = {})
                 }
             }
         }
     }
 }
 
+@Preview(showBackground = true, backgroundColor = 0xFF0B101F, widthDp = 412, name = "Device Card Active")
+@Composable
+private fun ActiveDeviceCardPreviewActive() {
+    Box(modifier = Modifier.padding(16.dp)) {
+        ActiveDeviceCardItem(
+            device = previewDeviceItem(
+                id = "preview-active",
+                name = "Alpha",
+                model = "SM-S928B",
+                manufacturer = "Samsung Galaxy",
+                status = "active",
+                visitorId = "Visitor-10",
+                lastActivity = "2026-04-28T07:22:00Z"
+            ),
+            onClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0B101F, widthDp = 412, name = "Device Card Inactive")
+@Composable
+private fun ActiveDeviceCardPreviewInactive() {
+    Box(modifier = Modifier.padding(16.dp)) {
+        ActiveDeviceCardItem(
+            device = previewDeviceItem(
+                id = "preview-inactive",
+                name = "e3q",
+                model = "SM-S928B",
+                manufacturer = "Samsung Galaxy",
+                status = "inactive",
+                visitorId = "Visitor-7",
+                lastActivity = "2026-04-27T11:33:00Z"
+            ),
+            onClick = {}
+        )
+    }
+}
+
 private val friendlyFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy, h:mm a")
+
+private fun formatDateFilterLabel(raw: String?): String {
+    if (raw.isNullOrBlank()) return "Date"
+    return runCatching {
+        val selected = LocalDate.parse(raw, DateTimeFormatter.ISO_LOCAL_DATE)
+        if (selected == LocalDate.now(ZoneOffset.UTC)) {
+            "Today"
+        } else {
+            selected.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))
+        }
+    }.getOrElse {
+        raw
+    }
+}
 
 private fun formatApiDate(utcTimeMillis: Long): String {
     return Instant.ofEpochMilli(utcTimeMillis)
