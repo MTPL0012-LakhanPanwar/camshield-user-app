@@ -191,15 +191,12 @@ class ApiService(context: Context) {
     suspend fun getActiveDevices(
         page: Int = 1,
         limit: Int = 10,
-        q: String = ""
+        q: String = "",
+        date: String = ""
     ): ApiResult<PaginatedData<ActiveDeviceItem>> {
-        val (code, json) = client.get(
-            "/api/admin/devices/active?page=$page&limit=$limit&q=${
-                encode(
-                    q
-                )
-            }"
-        )
+        var path = "/api/admin/v2/devices/active?page=$page&limit=$limit&q=${encode(q)}"
+        if (date.isNotBlank()) path += "&date=${encode(date)}"
+        val (code, json) = client.get(path)
         return if (code == 200 && json != null) {
             val data = json.getJSONObject("data")
             val arr = data.getJSONArray("items")
@@ -215,8 +212,10 @@ class ApiService(context: Context) {
         } else ApiResult.Error(extractMessage(json), code)
     }
 
-    suspend fun getActiveEnrollment(deviceId: String): ApiResult<EnrollmentDetail> {
-        val (code, json) = client.get("/api/admin/devices/$deviceId/active-enrollment")
+    suspend fun getActiveEnrollment(deviceId: String, enrollmentId: String = ""): ApiResult<EnrollmentDetail> {
+        var path = "/api/admin/devices/enrollment?deviceId=${encode(deviceId)}"
+        if (enrollmentId.isNotBlank()) path += "&enrollmentId=${encode(enrollmentId)}"
+        val (code, json) = client.get(path)
         return if (code == 200 && json != null) {
             ApiResult.Success(parseEnrollment(json.getJSONObject("data")))
         } else ApiResult.Error(extractMessage(json), code)
@@ -411,12 +410,15 @@ class ApiService(context: Context) {
             device = mergedDevice.copy(status = status),
             visitorId = obj.optString("visitorId"),
             status = status,
+            enrollmentId = obj.optString("enrollmentId").takeIf { it.isNotBlank() },
             lastActivity = obj.optString("lastActivity").takeIf { it.isNotBlank() },
             pushToken = obj.optString("pushToken").takeIf { it.isNotBlank() },
             lastEnrollment = obj.optString("lastEnrollment").takeIf { it.isNotBlank() },
             createdAt = obj.optString("createdAt").takeIf { it.isNotBlank() },
             updatedAt = obj.optString("updatedAt").takeIf { it.isNotBlank() },
-            currentFacility = obj.optJSONObject("currentFacility")?.let { parseFacility(it) }
+            currentFacility = obj.optJSONObject("currentFacility")?.let { parseFacility(it) },
+            enrolledAt = obj.optString("enrolledAt").takeIf { it.isNotBlank() },
+            unenrolledAt = obj.optString("unenrolledAt").takeIf { it.isNotBlank() },
         )
     }
 
@@ -425,7 +427,8 @@ class ApiService(context: Context) {
         device = obj.optJSONObject("device")?.let { parseDeviceInfo(it) } ?: parseDeviceInfo(obj),
         facility = obj.optJSONObject("facility")?.let { parseFacility(it) } ?: FacilityData(),
         entryQRCode = obj.optJSONObject("entryQRCode")?.let { parseQR(it, "entry") },
-        enrolledAt = obj.optString("enrolledAt")
+        enrolledAt = obj.optString("enrolledAt"),
+        unenrolledAt = obj.optString("unenrolledAt").takeIf { it.isNotBlank() }
     )
 
     private fun buildFacilityBody(

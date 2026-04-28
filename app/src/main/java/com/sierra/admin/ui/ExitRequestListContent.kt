@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -105,13 +107,19 @@ fun ExitRequestListContent(
                 .fillMaxWidth()
                 .padding(bottom = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("Find Device Name or Visitor ID", color = DsTextGray) },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp),
+                placeholder = { Text("Find Device Name or Visitor ID",
+                    color = DsTextGray,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                ) },
                 leadingIcon = { 
                     Icon(
                         Icons.Default.Search, 
@@ -120,28 +128,41 @@ fun ExitRequestListContent(
                     ) 
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
                     focusedContainerColor = DsNavBg,
                     unfocusedContainerColor = DsNavBg,
                     focusedBorderColor = DsAccentBlue,
-                    unfocusedBorderColor = Color.Transparent
+                    unfocusedBorderColor = DsTextGray.copy(alpha = 0.2f)
                 )
             )
-            
-            IconButton(
-                onClick = {
-                    viewModel.loadPendingRequests()
-                },
-                enabled = !isLoading
+
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .border(
+                        width = 1.dp,
+                        color = DsTextGray.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .background(DsNavBg, RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "Refresh",
-                    tint = Color.White
-                )
+                IconButton(
+                    onClick = {
+                        viewModel.loadPendingRequests()
+                    },
+                    enabled = !isLoading,
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh",
+                        tint = Color.White
+                    )
+                }
             }
         }
 

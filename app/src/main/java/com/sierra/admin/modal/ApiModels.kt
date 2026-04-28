@@ -90,12 +90,15 @@ data class ActiveDeviceItem(
     val device: DeviceInfo = DeviceInfo(),
     val visitorId: String = "",
     val status: String = "",
+    val enrollmentId: String? = null,
     val lastActivity: String? = null,
     val pushToken: String? = null,
     val lastEnrollment: String? = null,
     val createdAt: String? = null,
     val updatedAt: String? = null,
-    val currentFacility: FacilityData? = null
+    val currentFacility: FacilityData? = null,
+    val enrolledAt: String? = null,
+    val unenrolledAt: String? = null
 )
 
 data class EnrollmentDetail(
@@ -103,7 +106,8 @@ data class EnrollmentDetail(
     val device: DeviceInfo = DeviceInfo(),
     val facility: FacilityData = FacilityData(),
     val entryQRCode: QRData? = null,
-    val enrolledAt: String = ""
+    val enrolledAt: String = "",
+    val unenrolledAt: String? = null
 )
 
 data class ForceExitResponse(
