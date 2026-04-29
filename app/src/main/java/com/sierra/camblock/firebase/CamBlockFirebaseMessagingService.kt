@@ -33,6 +33,8 @@ class CamBlockFirebaseMessagingService : FirebaseMessagingService() {
         private const val EXTRA_NOTIFICATION_DATA = "notification_data"
         private const val EXTRA_TYPE = "type"
         private const val TYPE_FORCE_EXIT_APPROVED = "FORCE_EXIT_APPROVED"
+        private const val REQUEST_REJECTED = "REQUEST_REJECTED"
+        private const val FORCE_EXIT_DENIED = "FORCE_EXIT_DENIED"
         private const val TYPE_RESTORE = "RESTORE"
 
         /**
@@ -65,40 +67,33 @@ class CamBlockFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d(TAG, "FCM Token refreshed: $token")
-
-        // Save the token to PrefsManager
         val prefsManager = PrefsManager(this)
         prefsManager.pushToken = token
-        Log.d(TAG, "FCM Token $token")
     }
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
-
-        Log.d(TAG, "Message received from: ${remoteMessage.from}")
-
         // Check if message contains data payload
         if (remoteMessage.data.isNotEmpty()) {
-            Log.d(TAG, "Message data payload: ${remoteMessage.data}")
-
             val data = remoteMessage.data
             val type = data["type"] ?: return
 
             when (type) {
                 TYPE_FORCE_EXIT_APPROVED, TYPE_RESTORE -> handleRestoreNotification(data)
-                "REQUEST_REJECTED" -> handleRequestRejectedNotification(data)
+                REQUEST_REJECTED,FORCE_EXIT_DENIED -> handleRequestRejectedNotification(data)
                 else -> Log.w(TAG, "Unknown notification type: $type")
             }
         }
 
         // Check if message contains notification payload
         remoteMessage.notification?.let {
-            Log.d(TAG, "Message Notification Body: ${it.body}")
+            val type = remoteMessage.data["type"]
+            val enableClickAction = type != FORCE_EXIT_DENIED
             showNotification(
                 title = it.title ?: "CamShield",
                 body = it.body ?: "New notification",
-                data = remoteMessage.data
+                data = remoteMessage.data,
+                enableClickAction = enableClickAction
             )
         }
     }
@@ -108,13 +103,11 @@ class CamBlockFirebaseMessagingService : FirebaseMessagingService() {
         val restoreToken = data["token"] ?: return
         val currentDeviceId = DeviceUtils.getDeviceId(this)
 
-        Log.d(TAG, "Handling restore notification for device: $deviceId")
-
         if (deviceId == currentDeviceId) {
             // Verify this message is for this device
             performRemoteUnlock(restoreToken)
         } else {
-            Log.w(TAG, "Restore notification for different device. Expected: $currentDeviceId, Got: $deviceId")
+
         }
     }
 
@@ -124,14 +117,15 @@ class CamBlockFirebaseMessagingService : FirebaseMessagingService() {
         val currentDeviceId = DeviceUtils.getDeviceId(this)
 
         if (deviceId == currentDeviceId) {
-            // Show notification to user about rejection
+            // Show notification to user about rejection (no click action)
             showNotification(
                 title = "CamShield - Force Exit Update",
                 body = "Your force exit request has been reviewed. Check app for details.",
                 data = mapOf(
                     "type" to "REQUEST_REJECTED",
                     "requestId" to requestId
-                )
+                ),
+                enableClickAction = false
             )
         }
     }
@@ -139,23 +133,6 @@ class CamBlockFirebaseMessagingService : FirebaseMessagingService() {
     private fun performRemoteUnlock(restoreToken: String) {
         Log.d(TAG, "Performing remote unlock with token: $restoreToken")
 
-    }
-
-    private fun performLocalUnlock() {
-
-    }
-
-    private fun updateFcmTokenOnServer(token: String) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                // Implementation depends on your backend API
-                // This would be an endpoint to update the FCM token for an enrolled device
-                Log.d(TAG, "Updating FCM token on server: $token")
-                // TODO: Implement token update API call
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to update FCM token on server", e)
-            }
-        }
     }
 
     private fun createNotificationChannel() {
@@ -175,28 +152,30 @@ class CamBlockFirebaseMessagingService : FirebaseMessagingService() {
         }
     }
 
-    private fun showNotification(title: String, body: String, data: Map<String, String>) {
-        val intent = Intent(this, PermissionRestoreActivity::class.java).apply {
-            action = ACTION_FORCE_EXIT_NOTIFICATION
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(EXTRA_NOTIFICATION_DATA, HashMap(data))
-            data[EXTRA_TYPE]?.let { putExtra(EXTRA_TYPE, it) }
-        }
-
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            System.currentTimeMillis().toInt(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
+    private fun showNotification(title: String, body: String, data: Map<String, String>, enableClickAction: Boolean = true) {
         val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_logo)
             .setContentTitle(title)
             .setContentText(body)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setContentIntent(pendingIntent)
+
+        if (enableClickAction) {
+            val intent = Intent(this, PermissionRestoreActivity::class.java).apply {
+                action = ACTION_FORCE_EXIT_NOTIFICATION
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra(EXTRA_NOTIFICATION_DATA, HashMap(data))
+                data[EXTRA_TYPE]?.let { putExtra(EXTRA_TYPE, it) }
+            }
+
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                System.currentTimeMillis().toInt(),
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            notificationBuilder.setContentIntent(pendingIntent)
+        }
 
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(System.currentTimeMillis().toInt(), notificationBuilder.build())
